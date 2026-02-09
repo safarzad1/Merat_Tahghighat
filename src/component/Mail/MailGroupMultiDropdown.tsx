@@ -45,7 +45,6 @@ export default function MailGroupMultiSelect({
 }: Props) {
     const [selectedOptions, setSelectedOptions] = useState<OptionType[]>([]);
 
-    // ✅ نرمال‌سازی سرچ فارسی/عربی
     const normalizeFa = (s: string) =>
         (s || "")
             .toString()
@@ -56,9 +55,7 @@ export default function MailGroupMultiSelect({
             .trim()
             .toLowerCase();
 
-    // ✅ mapping فقط با ID و OnvanGroup
     const options: OptionType[] = useMemo(() => {
-        console.log(`[${instanceId}] items length:`, items?.length);
 
         const mapped = (items ?? []).map((g) => ({
             value: g.ID,
@@ -66,13 +63,10 @@ export default function MailGroupMultiSelect({
             data: g,
         }));
 
-        console.log(`[${instanceId}] options length:`, mapped.length);
-        console.log(`[${instanceId}] first option sample:`, mapped[0]);
 
         return mapped;
     }, [items, instanceId]);
 
-    // ✅ اعمال مقدار اولیه (اگر داشتی)
     useMemo(() => {
         if (!defaultSelectedIds?.length) return;
         if (!options.length) return;
@@ -83,7 +77,6 @@ export default function MailGroupMultiSelect({
 
         setSelectedOptions(pre);
         onSelect?.(pre.map((x) => ({ id: x.data.ID, title: x.data.OnvanGroup })));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [options]);
 
     const handleChange = (vals: MultiValue<OptionType>) => {

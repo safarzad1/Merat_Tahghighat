@@ -7,7 +7,7 @@ import { MailMessage } from "./types";
 export default function MessageRow({ msg }: { msg: MailMessage }) {
     return (
         <Link
-            href={`/mail/message/${msg.id}`}
+            href={`/Mail/message/${msg.id}`}
             className={[
                 "flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm",
                 msg.خوانده_شده ? "opacity-90" : "ring-1 ring-slate-200",
