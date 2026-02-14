@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
         );
 
     } catch (err) {
-        console.error("Error in API:", err); // لاگ دقیق خطا در کنسول سرور
+        console.error("Error in API:", err);
         return NextResponse.json(
             { error: err instanceof Error ? err.message : "Unknown error" },
             { status: 500 }

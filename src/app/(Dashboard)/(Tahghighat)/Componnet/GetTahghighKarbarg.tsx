@@ -9,7 +9,6 @@ import GetDFNByPID from '@/component/DFN/GetDFNByPID'
 import FormInput from '@/component/Objects/FormInput1'
 import domtoimage from 'dom-to-image';
 import ModalEjraBeMohaghegh from '../Componnet/EjraBeMohaghegh'
-// Swipe helpers
 const SWIPE_THRESHOLD = 60;
 
 
@@ -178,9 +177,72 @@ const GetTahghighKarbarg = ({ taghighid, mahal, NameMohaghegh, isDone, onChangeC
   const [gridBoxes, setGridBoxes] = useState<{ url: string; label: string }[]>([]);
   const divRef = useRef<HTMLDivElement>(null);
 
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0); // 0..100
+  const [uploadText, setUploadText] = useState<string>("");
+  const [uploadTotalBytes, setUploadTotalBytes] = useState(0);
+  const [uploadSentBytes, setUploadSentBytes] = useState(0);
+  const [uploadError, setUploadError] = useState<string>("");
+
+  function ProgressBar({ value }: { value: number }) {
+    const v = Math.max(0, Math.min(100, value));
+    return (
+      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+        <div
+          className="h-3 bg-blue-600 transition-all duration-200"
+          style={{ width: `${v}%` }}
+        />
+      </div>
+    );
+  }
+
+  const uploadWithProgress = (url: string, formData: FormData) => {
+    return new Promise<{ status: number; files?: string[]; error?: string }>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", url, true);
+      xhr.responseType = "text";
+
+      xhr.upload.onprogress = (e) => {
+        if (!e.lengthComputable) return;
+        setUploadSentBytes(e.loaded);
+        setUploadTotalBytes(e.total);
+
+        const percent = Math.round((e.loaded / e.total) * 100);
+        setUploadProgress(percent);
+        setUploadText(`در حال آپلود... ${percent}%`);
+      };
+
+      xhr.onload = () => {
+        try {
+          const text = xhr.responseText || "";
+          const json = text ? JSON.parse(text) : null;
+
+          // اگر سرور چیزی غیر از JSON داد
+          if (!json) {
+            return reject(new Error("Empty response from server"));
+          }
+
+          resolve(json);
+        } catch {
+          reject(new Error("Invalid JSON from server"));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error("NetworkError during upload"));
+      xhr.onabort = () => reject(new Error("Upload aborted"));
+
+      xhr.send(formData);
+    });
+  };
+
 
   const uploadImages = async (idKarbarg: number, files: File[]) => {
-    setImages([]);
+    // ریست خطا و progress
+    setUploadError("");
+    setUploadText("");
+    setUploadProgress(0);
+    setUploadSentBytes(0);
+    setUploadTotalBytes(0);
 
     const MAX_SIZE = 3 * 1024 * 1024; // ✅ 3MB
 
@@ -190,14 +252,14 @@ const GetTahghighKarbarg = ({ taghighid, mahal, NameMohaghegh, isDone, onChangeC
         index === self.findIndex((f) => f.name === file.name && f.size === file.size)
     );
 
-    // ساختن آرایه‌ی تصاویر لوکال (برای نمایش)
+    // ساخت preview
     const localImages = uniqueFiles.map((file) => ({
       file,
       url: URL.createObjectURL(file),
       size: file.size,
     }));
 
-    // اضافه کردن تصاویر جدید به state (بدون تکراری)
+    // نمایش preview بدون پاک کردن قبلی‌ها
     setImages((prev) => {
       const existingKeys = new Set(prev.map((img) => img.file.name + img.file.size));
       const newImages = localImages.filter(
@@ -212,39 +274,43 @@ const GetTahghighKarbarg = ({ taghighid, mahal, NameMohaghegh, isDone, onChangeC
 
     if (skippedFiles.length > 0) {
       console.warn("⛔ Some files skipped (too large):", skippedFiles.map((f) => f.name));
-      // اگر Toast داری بهتره اینجا نشون بدی
-      // alert("حداکثر حجم هر تصویر ۳ مگابایت است");
+      // اینجا میتونی Toast بزاری
     }
 
     if (validFiles.length === 0) {
-      console.log("No valid files to upload (all too large).");
+      setUploadError("هیچ فایل معتبری برای آپلود وجود ندارد (همه بزرگ‌تر از ۳MB هستند).");
       return;
     }
+
+    if (!idKarbarg) {
+      setUploadError("شناسه کاربرگ (idKarbarg) نامعتبر است.");
+      return;
+    }
+
+    // شروع آپلود
+    setUploading(true);
+    setUploadText("شروع آپلود...");
 
     try {
       const formData = new FormData();
       validFiles.forEach((file) => formData.append("files", file));
 
-      const res = await fetch("/Api/UploadFiles", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data: { status: number; files?: string[]; error?: string } = await res.json();
+      // ✅ آپلود با پروگرس
+      const data = await uploadWithProgress("/Api/UploadFiles", formData);
 
       if (data.status === 200 && data.files) {
-        // برای هر فایل آپلود شده
-        for (let i = 0; i < data.files.length; i++) {
-          const savedFileName = data.files[i];     // نام فایل ذخیره شده در سرور
-          const originalFile = validFiles[i];      // فایل اصلی کاربر
+        setUploadText("ثبت اطلاعات در دیتابیس...");
 
+        // ثبت در DB
+        for (let i = 0; i < data.files.length; i++) {
+          const savedFileName = data.files[i];
+          const originalFile = validFiles[i];
           if (!originalFile) continue;
 
           const sizeMB = (originalFile.size / 1024 / 1024).toFixed(2);
           const ext = "." + (originalFile.name.split(".").pop() ?? "");
           const mmtype = ext;
 
-          // 1) ثبت در جدول پیوست‌ها
           await InsertKarbargTahghighPeyvast(
             idKarbarg,
             savedFileName,
@@ -253,15 +319,11 @@ const GetTahghighKarbarg = ({ taghighid, mahal, NameMohaghegh, isDone, onChangeC
             user.UserId
           );
 
-          await AsddPeyvastKarbargTahghigh(
-            idKarbarg,
-            savedFileName,
-            user.UserId,
-            originalFile
-          );
+          // اگر لازم شد این رو هم فعال کن
+          // await AsddPeyvastKarbargTahghigh(idKarbarg, savedFileName, user.UserId, originalFile);
         }
 
-        // آپدیت URL ها از local blob به مسیر فایل‌های آپلود شده
+        // آپدیت URLها برای preview
         setImages((prev) =>
           prev.map((img, index) => {
             const uploadedFile = data.files?.[index];
@@ -269,20 +331,24 @@ const GetTahghighKarbarg = ({ taghighid, mahal, NameMohaghegh, isDone, onChangeC
           })
         );
 
-        loadGridImages();
-      } else if (data.error) {
-        console.error("Upload failed:", data.error);
+        setUploadProgress(100);
+        setUploadText("✅ آپلود با موفقیت انجام شد");
+        await loadGridImages();
+      } else {
+        setUploadError(data.error || "Upload failed: unknown error");
+        setUploadText("");
       }
     } catch (err) {
       console.error("Upload error:", err);
+      setUploadError(err instanceof Error ? err.message : "Upload error");
+      setUploadText("");
+    } finally {
+      setUploading(false);
     }
   };
 
-
-
   const openModal = (karbarg?: KarbargItem) => {
     if (karbarg) {
-      // حالت ویرایش
       setidKarbarg(karbarg.KarbargId);
       setTahghightype(Number(karbarg.TahghighType));
       setCodeManba(karbarg.CodeManba);

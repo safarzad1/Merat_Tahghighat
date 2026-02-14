@@ -906,6 +906,29 @@ export async function AddKarbargEmteaz(karbargid, emteyazKeyfi, emteyazPrice, us
     console.error("❌ خطا در فراخوانی ", error);
     throw error;
   }
+}// -----------------------------------------------------------------
+export async function JambandiOstan1(erjaid) {
+  try {
+    const res = await fetch("/Api/Tahghigh/GetJambandiOstan", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        erjaid
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error("خطا در دریافت اطلاعات");
+    }
+
+    const data = await res.json();
+    return data;
+  } catch (error) {
+    console.error("❌ خطا در فراخوانی ", error);
+    throw error;
+  }
 }
 // -----------------------------------------------------------------
 export async function AsddPeyvastKarbargTahghigh(karbargId, fileName, userId, file) {
@@ -930,7 +953,6 @@ export async function AsddPeyvastKarbargTahghigh(karbargId, fileName, userId, fi
     throw error;
   }
 }
-
 
 
 
