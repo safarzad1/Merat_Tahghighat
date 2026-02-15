@@ -9,6 +9,9 @@ import { GetFileNamePic } from '@/Lib/ApiServiceNameha'
 import { useAlert } from "@/component/AlertContext";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
+import EjraBeMohaghegh from '@/app/(Dashboard)/(Tahghighat)/Componnet/EjraBeMohaghegh'
+import PersianDateInput from '@/component/Objects/InputPersianDatePicker'
+
 import {
     GetDavtalabPic,
     FehrestDavtalaban,
@@ -90,14 +93,19 @@ export default function FehrestUsersClient({
 
     const fehrestPishnahadiBoxRef = useRef<HTMLDivElement | null>(null);
     const [FehrestPishnadiTahghigh, setFehrestPishnadiTahghigh] = useState<string>("");
+    const [errorMohaghegh, setErrorMohaghegh] = useState<boolean>(false);
+    const [errorTarikh, seterrorTarikh] = useState<boolean>(false);
+
+    const [CodeMohaghegh, setCodeMohaghegh] = useState<number | null>(null);
 
     const [zoomLevel, setZoomLevel] = useState<number>(1);
     const [dragStartY, setDragStartY] = useState<number | null>(null); // جدید: برای جابجایی عمودی
     const [dragDeltaY, setDragDeltaY] = useState(0);
+    const [tarikh, settarikh] = useState<string | null>(null);
 
     const router = useRouter();
     const { showConfirm } = useConfirm();
-
+    const [tozihat, setTozihat] = useState("");
     const [data, setData] = useState<any[]>([]);
     const [page, setPage] = useState<number>(1);
     const [indexsorat, setindexsorat] = useState<number>(1);
@@ -135,6 +143,7 @@ export default function FehrestUsersClient({
     const [ModalOpenCreateForm, setModalOpenCreateForm] = useState(false);
     const [ModalOpenFehrestParvandh, setModalOpenFehrestParvandh] = useState(false);
     const [ModalOpenKholasehSalahiyat, setModalOpenKholasehSalahiyat] = useState(false);
+    const [ModalHamyar, setModalHamyar] = useState(false);
 
     const peyvastObjectUrlsRef = useRef<string[]>([]);
     const picObjectUrlRef = useRef<string | null>(null);
@@ -148,6 +157,9 @@ export default function FehrestUsersClient({
         setZoomLevel(1); // ریست کردن زوم هنگام بستن
     };
 
+    const SaveErjaBeHamyar = async (ShomarehParvandeh: number, CodeMohaghegh: number, tozihat: string, tarikh: string, user: number) => {
+
+    }
 
     const LoadOneKarbargMosahebe = async () => {
 
@@ -694,7 +706,7 @@ export default function FehrestUsersClient({
                 <div className="fixed inset-0 z-50 flex items-start justify-center pt-4">
                     <div className="absolute inset-0 bg-black opacity-40" onClick={closeUserModal} />
 
-                    <div className="bg-white rounded-lg px-6 pb-4 m-4 shadow-lg z-50 w-[900px] relative max-h-[85vh] overflow-auto">
+                    <div className="bg-white rounded-lg px-6 pb-4 m-4 shadow-lg z-50 w-[1000px] relative max-h-[85vh] overflow-auto">
                         <div className="bg-sky-300 -mx-6 p-3 rounded-t-lg border-b border-gray-300 sticky top-0 z-10">
                             <h2 className="text-lg font-bold">اطلاعات فرد</h2>
                         </div>
@@ -803,12 +815,7 @@ export default function FehrestUsersClient({
                                 onClick={() => {
                                     setShomarehParvandeh(detail?.ShomarehParvandeh || 0);
                                     setFullName(detail?.FirstName + " " + detail?.LastName || "");
-                                    setModalOpenFehrestParvandh(true);
-
-                                    // router.push(
-                                    //     `/Davtalab/AshkhasParvandeh?shomarehParvandeh=${detail?.ShomarehParvandeh}&noeBayegani=${1}`
-                                    // );
-                                    closeUserModal();
+                                    setModalHamyar(true);
                                 }}
                             >
                                 پرونده داوطلب
@@ -830,6 +837,24 @@ export default function FehrestUsersClient({
                                 صلاحیت داوطلب
                                 <FolderOpen />
                             </button>
+
+                            <button
+                                className="flex gap-2 bg-sky-500 hover:bg-sky-600 text-white  px-4 py-2 rounded-xl cursor-pointer"
+                                onClick={() => {
+                                    setModalOpenKholasehSalahiyat(true);
+                                    setShomarehParvandeh(detail?.ShomarehParvandeh || 0);
+                                    setFullName(detail?.FirstName + " " + detail?.LastName || "");
+
+                                    // router.push(
+                                    //     `/Davtalab/AshkhasParvandeh?shomarehParvandeh=${detail?.ShomarehParvandeh}&noeBayegani=${1}`
+                                    // );
+                                    closeUserModal();
+                                }}
+                            >
+                                ارجاع به همیار
+                                <FolderOpen />
+                            </button>
+
                             <button
                                 className="flex gap-2 bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded-xl cursor-pointer"
                                 onClick={closeUserModal}
@@ -1427,6 +1452,81 @@ export default function FehrestUsersClient({
                 )
             }
 
+
+
+
+            {data.length > 0 && ModalHamyar && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div
+                        className="absolute inset-0 bg-black opacity-40"
+                        onClick={() => setModalHamyar(false)}
+                    ></div>
+
+                    {/* محتوای مودال */}
+                    <div className="bg-white rounded-lg px-6 pb-4 shadow-lg z-50 w-96 relative">
+                        <div className="bg-gray-200 -mx-6 p-3 rounded-t-lg border-b border-gray-300">
+                            <h2 className="text-lg font-bold">انتخاب شورای تحقیق</h2>
+                        </div>
+                        <hr className="mb-3 text-blue-800" />
+
+                        <EjraBeMohaghegh
+                            codeEntekhabat={31201}
+                            label="کاربر شورای تحقیق استان"
+                            mahal={data[0].MahalReciver}
+                            noeHamkari={2}
+                            vije={8}
+                            onSelect={(info) => {
+                                setCodeMohaghegh(info ? info.id : null);
+                                setErrorMohaghegh(false);
+                            }}
+                            error={errorMohaghegh}
+                            errorMessage={errorMohaghegh ? "لطفاً محقق را انتخاب کنید" : ""}
+                        />
+
+                        <div className="">
+                            <PersianDateInput
+                                label="مهلت انجام"
+                                allowPastDates={false}
+                                onChange={(v: any) => {
+                                    settarikh(v)
+                                    seterrorTarikh(false);
+                                }
+                                }
+                                error={errorTarikh}
+                                errorMessage={errorTarikh ? "لطفاً تاریخ را انتخاب کنید" : ""} // ✅ پیام خطا
+                            />
+                        </div>
+
+
+                        <textarea
+                            className="text-[15px] mt-2 w-full h-24 border border-gray-300 rounded p-2 mb-2 resize-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 outline-none"
+                            placeholder="توضیحات ارجاع پرونده "
+                            value={tozihat}
+                            onChange={(e: any) => setTozihat(e.target.value)}
+                        />
+
+                        {/* دکمه‌ها */}
+                        <div className="flex justify-end gap-2 mt-5">
+                            <button
+                                className="bg-gray-300 hover:bg-gray-400 px-4 py-1 rounded cursor-pointer"
+                                onClick={() => setModalHamyar(false)}
+                            >
+                                انصراف
+                            </button>
+                            <button
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded cursor-pointer"
+                                onClick={() => (SaveErjaBeHamyar(ShomarehParvandeh, CodeMohaghegh!, tozihat, tarikh!, user.UserId ?? ""))}              >
+                                تایید
+                            </button>
+                        </div>
+                    </div>
+                </div >
+
+
+
+
+            )
+            }
 
         </>
     );

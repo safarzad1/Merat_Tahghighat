@@ -1019,7 +1019,7 @@ export default function ParvandehPage() {
                       </button>
 
                       <button
-                        onClick={() => ReferToTeam()} // تابع دلخواه خودتان
+                        onClick={() => ReferToTeam()}
                         className="flex items-center gap-1 p-2 px-4 bg-green-800 text-white rounded-2xl shadow hover:bg-green-700 transition-colors cursor-pointer"
                       >
                         <Send className="w-4 h-4" />
@@ -1394,12 +1394,12 @@ export default function ParvandehPage() {
                         <td className="shabnam text-[16px] p-2 border">
                           <span
                             className={`inline-flex px-3 py-1 rounded-full text-[16px] border ${r.RecordState === 2
-                                ? "bg-green-50 border-green-300 text-green-700"
-                                : r.RecordState === 3
-                                  ? "bg-amber-50 border-amber-300 text-amber-700"
-                                  : r.RecordState === 1
-                                    ? "bg-gray-50 border-gray-300 text-gray-700"
-                                    : "bg-red-50 border-red-300 text-red-700"
+                              ? "bg-green-50 border-green-300 text-green-700"
+                              : r.RecordState === 3
+                                ? "bg-amber-50 border-amber-300 text-amber-700"
+                                : r.RecordState === 1
+                                  ? "bg-gray-50 border-gray-300 text-gray-700"
+                                  : "bg-red-50 border-red-300 text-red-700"
                               }`}
                           >
                             {recordStateLabel(r.RecordState)}

@@ -52,10 +52,8 @@ export default function TopBar() {
 
     const mahalLen = user?.Mahal?.toString()?.length ?? 0;
 
-    // ✅ مهم: PostId را عددی کن که "56" هم درست تشخیص داده شود
     const postId = Number(user?.PostId);
 
-    // ✅ اگر PostId = 56 فقط 3 آیتم را نشان بده
     if (postId === 56) {
         return (
             <div className="bg-white w-full mt-0.5 h-10 md:h-10 border-r-gray-500 shadow-md flex items-center justify-between px-4 gap-5 md:px-8">
@@ -88,11 +86,41 @@ export default function TopBar() {
             </div>
         );
     }
+    if (postId === 57) {
+        return (
+            <div className="bg-white w-full mt-0.5 h-10 md:h-10 border-r-gray-500 shadow-md flex items-center justify-between px-4 gap-5 md:px-8">
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={logout}
+                        className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white"
+                    >
+                        <LogOut size={16} className="text-red-600" />
+                        <span>خروج از حساب</span>
+                    </button>
 
-    // ✅ حالت عادی (همون منوی کامل شما)
+                    <div className="text-indigo-700">|</div>
+                    <Link
+                        href="/Davtalab/CardDavtalab"
+                        className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white"
+                    >
+                        <FolderCog size={16} className="text-blue-600" />
+                        <span>داوطلبان انتخابات</span>
+                    </Link>
+
+                </div>
+
+                <div className="flex flex-col md:flex-row items-center gap-3 md:gap-6 me-8 md:me-16">
+                    <div className="p-3 h-8 bg-sky-100 rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white">
+                        <span>تاریخ روز :</span>
+                        <span>{user?.DateNow}</span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="bg-white w-full mt-0.5 h-10 md:h-10 border-r-gray-500 shadow-md flex items-center justify-between px-4 gap-5 md:px-8">
-            {/* Left Side */}
             <div className="flex items-center gap-2">
                 <button
                     onClick={logout}
@@ -139,7 +167,6 @@ export default function TopBar() {
 
                 <div className="text-indigo-700">|</div>
 
-                {/* ✅ منوی پیش ثبت نام */}
                 <div ref={davtalabRef} className="relative">
                     <div
                         onClick={() => {

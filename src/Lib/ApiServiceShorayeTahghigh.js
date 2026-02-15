@@ -17,7 +17,6 @@ export async function InsertTahghigh(erjaid, description, expireDate, userId, cr
         throw error;
     }
 }
-
 // -----------------------------------------------------------------
 export async function GetTahghighat(recordState, userId) {
     try {
@@ -146,6 +145,25 @@ export async function AddKarbargTahghighDavtalab
         const res = await fetch("/Api/Tahghigh/InsertKarbargTahghighDavtalab", {
             method: "POST",
             body: formData,
+        });
+
+        const data = await res.json();
+        return data;
+    } catch (error) {
+        console.error("خطا در انجام فرآیند:", error);
+        throw error;
+    }
+}
+// -----------------------------------------------------------------
+export async function InsertHamyarHoghoghi(shomarehParvandeh, personId, expireDate, description, userId) {
+    try {
+        const res = await fetch("/Api/HamyarHoghoghi/InsertHamyar", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+
+            },
+            body: JSON.stringify({ shomarehParvandeh, personId, expireDate, description, userId }),
         });
 
         const data = await res.json();
