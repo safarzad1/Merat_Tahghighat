@@ -64,7 +64,7 @@ export default function MailLayout() {
   useEffect(() => {
     if (!hasLoaded && user?.Mahal) {
       const fetchData = async () => {
-        const result = await Get_AmarTahghight_Shahrestan(user.Mahal);
+        const result = await Get_AmarTahghight_Shahrestan(user.Mahal, user.UserId);
         if (result.status === 401) {
           router.push("/Login");
         }

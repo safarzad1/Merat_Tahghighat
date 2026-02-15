@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
         indexsort,
         ascdesc,
         search,
-        idValue,
+        idValue, userId
     } = body;
 
     if (!page) {
@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
             .input("SortIndex", sql.Int, indexsort ?? 1)
             .input("SECDEC", sql.Int, ascdesc ?? 1)
             .input("ItemValue", sql.Int, idValue ?? 0)
+            .input("UserId", sql.BigInt, userId ?? 0)
             .execute("Tahghighat.SP_Get_Erja_MahalReciver_ErjaLastState");
 
         return NextResponse.json({ status: 200, data: result.recordset }, { status: 200 });

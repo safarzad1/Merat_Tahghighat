@@ -54,7 +54,7 @@ export async function GetTahghighat(
   indexsort,
   ascdesc,
   search,
-  idValue
+  idValue, userId
 ) {
   try {
     const res = await fetch("/Api/Tahghigh/GetTahghighat", {
@@ -71,7 +71,7 @@ export async function GetTahghighat(
         indexsort,
         ascdesc,
         search,
-        idValue,
+        idValue, userId
       }),
     });
 
@@ -543,14 +543,14 @@ export async function Update_ErjaParvandeh(erjaid, isdone, erjaLastState, sharhe
 }
 
 // -----------------------------------------------------------------
-export async function Get_AmarTahghight_Shahrestan(mahal) {
+export async function Get_AmarTahghight_Shahrestan(mahal, userId) {
   try {
     const res = await fetch("/Api/Tahghigh/AmarShahrestan", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ mahal }),
+      body: JSON.stringify({ mahal, userId }),
     });
 
     const data = await res.json();
@@ -955,7 +955,7 @@ export async function AsddPeyvastKarbargTahghigh(karbargId, fileName, userId, fi
 }
 
 
-
+// -----------------------------------------------------------------
 export async function GetListpost(mahal) {
   try {
     const res = await fetch("/Api/Users/Getpost", {
@@ -965,6 +965,57 @@ export async function GetListpost(mahal) {
       },
       body: JSON.stringify({
         mahal
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error("خطا در دریافت شهرها");
+    }
+
+    const data = await res.json();
+    return data;
+  } catch (error) {
+    console.error("❌ خطا در فراخوانی GetCitys:", error);
+    throw error;
+  }
+}
+
+
+// -----------------------------------------------------------------
+export async function GetParvandehShorayeTahghighByID(erjaId) {
+  try {
+    const res = await fetch("/Api/ShorayeTahghigh/GetTahghigh_Shoraye_ErjaId", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        erjaId
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error("خطا در دریافت شهرها");
+    }
+
+    const data = await res.json();
+    return data;
+  } catch (error) {
+    console.error("❌ خطا در فراخوانی GetCitys:", error);
+    throw error;
+  }
+}
+
+// -----------------------------------------------------------------
+export async function DeleteParvandehShorayeTahghighByID(erjaId, userId) {
+  try {
+    const res = await fetch("/Api/ShorayeTahghigh/DeleteShoreyeTahghigh", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        erjaId, userId
       }),
     });
 

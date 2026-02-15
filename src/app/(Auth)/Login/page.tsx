@@ -73,6 +73,7 @@ export default function LoginPage() {
                     UserId: result.data.UserId || result.data.UserId || 0,
                     Mahal: result.data.mahal || result.data.Mahal || 0,
                     FullName: result.data.fullName || result.data.FullName || "",
+                    PostId: result.data.PostId || result.data.PostId || "",
                     OnvanSemat: result.data.onvanSemat || result.data.NameMahal || "",
                     DateNow: result.data.dateNow || result.data.DateNow || "",
                     IsMarkazShahrestan: result.data.IsMarkazShahrestan || "",

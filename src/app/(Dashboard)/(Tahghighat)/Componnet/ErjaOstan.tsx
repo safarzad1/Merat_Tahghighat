@@ -493,7 +493,7 @@ const FehrestErjaParvandeh = ({ erjaParentId }: FehrestErjaParvandehProps) => {
                 onClick={() => openPanel(item.ErjaId)}
                 className="px-4 py-1 rounded-md bg-sky-600 text-white text-sm hover:bg-sky-700 transition cursor-pointer"
               >
-                جمع بندی استان
+                جمع بندی 
               </button>
 
               {/* مودال تغییرات */}
@@ -505,7 +505,7 @@ const FehrestErjaParvandeh = ({ erjaParentId }: FehrestErjaParvandehProps) => {
                 className="flex items-center gap-1 p-1 px-4 bg-purple-500 text-white rounded shadow hover:bg-purple-700 transition-colors text-sm cursor-pointer"
               >
                 <CircleAlert className="w-4 h-4" />
-                مشاهده تغییرات
+                تغییرات
               </button>
             </div>
           </li>

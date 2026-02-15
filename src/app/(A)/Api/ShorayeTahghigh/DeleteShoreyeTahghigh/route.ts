@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { personId, recordState } = body;
+    const { erjaId, userId } = body;
 
     try {
         verifyToken(token);
@@ -29,9 +29,9 @@ export async function POST(req: NextRequest) {
         const pool = await getConnection();
         const result = await pool
             .request()
-            .input("PersonId", sql.BigInt, personId)
-            .input("RecordState", sql.BigInt, recordState)
-            .execute("Tahghighat.SP_Get_Tahghigh_Shoraye");
+            .input("ErjaId", sql.BigInt, erjaId)
+            .input("UserId", sql.BigInt, userId)
+            .execute("Tahghighat.SP_DeleteShorayeTahghigh");
 
         return NextResponse.json(
             { status: 200, data: result.recordset }

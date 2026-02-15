@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import CustomTable from "@/component/DataTable/CustomTable1";
 import { Plus, ViewIcon } from "lucide-react";
@@ -73,7 +73,7 @@ const Page = ({ codeentekhabat, mahalreciver, erjastate, idValue }: PageProps) =
 
 
             const result = await GetTahghighat(erjastate, codeentekhabat
-                , user.Mahal, pageNumber, 10, 1, 1, search, idValue
+                , user.Mahal, pageNumber, 10, 1, 1, search, idValue, user.UserId
             );
 
             if (result.status === 401) {

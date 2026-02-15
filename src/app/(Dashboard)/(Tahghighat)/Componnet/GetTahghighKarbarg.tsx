@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AsddPeyvastKarbargTahghigh, DeletePeyvastTahghigh, GetKarbargPeyvast, InsertKarbargTahghighPeyvast, Get_Tahghigh_Karbarg, DeleteKarbargTahghigh, InsertKarbarg } from "@/Lib/ApiService";
+import { AsddPeyvastKarbargTahghigh,AddKarbargEmteaz, DeletePeyvastTahghigh, GetKarbargPeyvast, InsertKarbargTahghighPeyvast, Get_Tahghigh_Karbarg, DeleteKarbargTahghigh, InsertKarbarg } from "@/Lib/ApiService";
 import { UpdateDoneKarbarg, GetKarbargByID } from "@/Lib/ApiService";
 import { Check, Code2Icon, Delete, Pencil, PlusCircle } from "lucide-react";
 import { useConfirm } from "@/Utils/ConfirmModalContext";
@@ -30,6 +30,8 @@ interface KarbargItem {
   IsDone: boolean;
   IsDoneErja: boolean;
   ErjaLastStateErja: number;
+    EmteyazKeyfi: number;
+  EmteyazPrice: number;
 }
 
 interface GetTahghighKarbargProps {
@@ -48,7 +50,7 @@ const GetTahghighKarbarg = ({ taghighid, mahal, NameMohaghegh, isDone, onChangeC
   const didSwipeRef = useRef(false);
   const [swipeX, setSwipeX] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
-
+  const [ModalOpenEmteyazOstan, setModalOpenEmteyazOstan] = useState(false);
 
   const user = useSelector((state: RootState) => state.user);
   const [data, setData] = useState<KarbargItem[]>([]);
@@ -62,6 +64,9 @@ const GetTahghighKarbarg = ({ taghighid, mahal, NameMohaghegh, isDone, onChangeC
   const [shoghl, setShoghl] = useState("");
   const [tahsilat, setTahsilat] = useState("");
   const [typeMahalTahghigh, setTypeMahalTahghigh] = useState(0);
+
+  const [EmteyazKefi, setEmteyazKefi] = useState(0);
+  const [EmteyazPrice, setEmteyazPrice] = useState(0);
 
   const [tahghightype, setTahghightype] = useState(0);
   const [tozihat, settozihat] = useState("");
@@ -635,6 +640,19 @@ const GetTahghighKarbarg = ({ taghighid, mahal, NameMohaghegh, isDone, onChangeC
   }
 
 
+  const ChangeEmteyazForOstan = async () => {
+    setModalOpenEmteyazOstan(true);
+  }
+  const SendEmteyazKarbarg = async (karbargid: number,emteyaz1:number,emteyaz2:number,userid:number) => {
+    const result =  await AddKarbargEmteaz(karbargid,emteyaz1,emteyaz2,user.UserId);
+    console.log(result);
+    if(result.status==200)
+    {
+      await loadData();
+      setModalOpenEmteyazOstan(false);
+
+    }
+  }
 
   return (
     <div className="p-6">
@@ -666,6 +684,8 @@ const GetTahghighKarbarg = ({ taghighid, mahal, NameMohaghegh, isDone, onChangeC
                 <th className="p-1 border-l border-gray-300 w-[5%]">حذف</th>
 
                 <th className="p-1 border-l border-gray-300 w-[5%]">اصلاح</th>
+                <th className="p-1 border-l border-gray-300 w-[7%]">امتیاز کیفی</th>
+                <th className="p-1 border-l border-gray-300 w-[7%]">امتیاز حق الزحمه</th>
                 <th className="p-1 border-l border-gray-300 w-[17%]">نوع تحقیق</th>
                 {/* <th className="p-1 border-l border-gray-300 w-[10%]">سریال کاربرگ</th> */}
                 <th className="p-1 border-l border-gray-300">توضیحات  </th>
@@ -719,6 +739,65 @@ const GetTahghighKarbarg = ({ taghighid, mahal, NameMohaghegh, isDone, onChangeC
                         />
                       </td>
                     )}
+                    {item.IsDone && (
+                      <>
+                        <td className="text-center" onClick={
+                          async () => {
+                            await ChangeEmteyazForOstan();
+                          }
+                        }>
+                         
+                          {item.EmteyazKeyfi>0 &&(
+<span className="px-3 py-1 bg-green-100 text-red-600 rounded-full border border-green-300">{item.EmteyazKeyfi}</span>
+                          )}
+
+                          {item.EmteyazKeyfi==0 &&(
+<span className="px-3 py-1 bg-red-100 text-red-600 rounded-full border border-red-300">{item.EmteyazKeyfi}</span>
+                          )}
+
+                        </td>
+                        <td className="text-center"
+                          onClick={
+                            async () => {
+                              await ChangeEmteyazForOstan();
+                            }
+                          }
+                        >
+                          {item.EmteyazPrice>0 &&(
+<span className="px-3 py-1 bg-green-100 text-red-600 rounded-full border border-green-300">{item.EmteyazPrice}</span>
+                          )}
+
+                          {item.EmteyazPrice==0 &&(
+<span className="px-3 py-1 bg-red-100 text-red-600 rounded-full border border-red-300">{item.EmteyazPrice}</span>
+                          )}
+                          
+                        </td>
+                      </>
+                    )}
+                    {!item.IsDone && (
+                      <>
+                      {item.EmteyazPrice>0 &&(
+<span className="px-3 py-1 bg-green-100 text-red-600 rounded-full border border-green-300">{item.EmteyazPrice}</span>
+                          )}
+
+                          {item.EmteyazPrice==0 &&(
+<span className="px-3 py-1 bg-red-100 text-red-600 rounded-full border border-red-300">{item.EmteyazPrice}</span>
+                          )}
+
+                          {item.EmteyazKeyfi>0 &&(
+<span className="px-3 py-1 bg-green-100 text-red-600 rounded-full border border-green-300">{item.EmteyazKeyfi}</span>
+                          )}
+
+                          {item.EmteyazKeyfi==0 &&(
+<span className="px-3 py-1 bg-red-100 text-red-600 rounded-full border border-red-300">{item.EmteyazKeyfi}</span>
+                          )}
+
+
+                        {/* <td className="text-center">{item.EmteyazKeyfi}</td>
+                        <td className="text-center">{item.EmteyazPrice}</td> */}
+                      </>
+                    )}
+
                     <td
                       onClick={() => { setModalOpenShowKarbarg(true); }
                       }
@@ -1559,6 +1638,79 @@ const GetTahghighKarbarg = ({ taghighid, mahal, NameMohaghegh, isDone, onChangeC
           </div>
         )}
 
+  {data.length > 0 && ModalOpenEmteyazOstan && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* پس‌زمینه نیمه شفاف */}
+            <div
+              className="absolute inset-0 bg-black opacity-40"
+              onClick={() => setModalOpenEmteyazOstan(false)}
+            ></div>
+
+            {/* محتوای مودال */}
+            <div className="bg-white rounded-lg px-6 pb-4 shadow-lg z-50 w-[800px] h-[500px] relative max-h-[90vh] overflow-y-auto">
+              <div className="bg-gray-200 -mx-6 p-3 rounded-t-lg border-b border-gray-300">
+                <h2 className="text-lg font-bold">ثبت امتیاز </h2>
+              </div>
+              <hr className="mb-3 text-blue-800" />
+
+              <div className="grid grid-cols-12 gap-3 mt-3 mx-10">
+
+
+                <div className="col-span-5">
+                  <GetDFNByPID
+                    PID={406}
+                    label="امتیاز کیفی"
+                    labelColor="text-blue-600"
+                    required={true}
+                    name="EmteyazKeyfi"
+                    defaultValue={0}
+                    // onChange={(e) => handleChange("Jensiyat", e.target.value)}
+                    onSelect={(info) => setEmteyazKefi(info ? info.Value : 0)}
+                    // error={}
+                    errorMessage={"لطفاً امتیاز را انتخاب کنید" }
+                  />
+                </div>
+                <div className="col-span-5">
+                  <GetDFNByPID
+                    PID={406}
+                    label="امتیاز حق الزحمه"
+                    labelColor="text-blue-600"
+                    required={true}
+                    defaultValue={0}
+                    name="EmteyazPrice"
+                    // onChange={(e) => handleChange("Taahol", e.target.value)}
+                    onSelect={(info) => setEmteyazPrice(info ? info.Value : 0)}
+                    errorMessage={"لطفاً امتیاز را انتخاب کنید" }
+                  />
+                </div>
+              </div>
+
+
+              <div className="flex justify-end gap-2 mt-5">
+                <button
+                  className="bg-gray-300 hover:bg-gray-400 px-4 py-1 rounded cursor-pointer"
+                  onClick={() => setModalOpenEmteyazOstan(false)}
+                >
+                  انصراف
+                </button>
+                <button
+                  className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-2xl cursor-pointer"
+                 onClick={ async () => (
+                 await SendEmteyazKarbarg(idKarbarg, EmteyazKefi,EmteyazPrice, user.UserId)
+                )}
+
+                >
+                  <span className="flex gap-2">
+                    <Check size={15} className="mt-1" />
+                    تایید
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div >
+        )
+        }
+        
       </div>
     </div>
   );

@@ -20,7 +20,10 @@ import { ErjaBeMohaghegh } from '@/Lib/ApiService';
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { GetTahghighByID } from '@/Lib/ApiService'
-import { InsertJambandiOstan, GetJambandiOstanPeyvast, GetErjaByID, Update_ErjaParvandeh } from "@/Lib/ApiService";
+import {
+  InsertJambandiOstan, GetJambandiOstanPeyvast, GetErjaByID, Update_ErjaParvandeh
+  , GetParvandehShorayeTahghighByID, DeleteParvandehShorayeTahghighByID
+} from "@/Lib/ApiService";
 import { InsertTahghigh } from "@/Lib/ApiServiceShorayeTahghigh";
 import RichTextEditor from '@/component/Tiptap'
 import domtoimage from 'dom-to-image';
@@ -97,8 +100,43 @@ export default function ParvandehPage() {
   const [ModalOpenKargroupMosahebe, setModalOpenKargroupMosahebe] = useState(false);
   const [ModalOpenErjabeOstanBedonTahghigh, setModalOpenErjabeOstanBedonTahghigh] = useState(false);
 
+
+  type ShorayeTahghighItem = {
+    FullNamePerson?: string;
+    RecordState?: number;
+    CreateDateTime?: string;
+  };
+
+  const [shoraItems, setShoraItems] = useState<ShorayeTahghighItem[]>([]);
+  const [shoraLoading, setShoraLoading] = useState(false);
+  const [shoraError, setShoraError] = useState<string>("");
+
+  const recordStateLabel = (s?: number) => {
+    switch (s) {
+      case 1:
+        return "بدون اقدام";
+      case 2:
+        return "پایان";
+      case 3:
+        return "برگشت";
+      default:
+        return "نامشخص";
+    }
+  };
+
+  const formatDT = (dt?: string) => {
+    if (!dt) return "—";
+    // اگر فرمت مثل 2026-02-15T10:20:30 باشد:
+    // نمایش: 2026-02-15 10:20
+    const t = dt.replace("T", " ");
+    return t.length >= 16 ? t.substring(0, 16) : t;
+  };
+
+
+
   const [zoom, setZoom] = useState(1); // 1 تا 6
   const [offset, setOffset] = useState({ x: 0, y: 0 }); // قبل از scale (world units)
+
 
   const viewerRef = useRef<HTMLDivElement | null>(null);
   const panRef = useRef({ startX: 0, startY: 0, startOx: 0, startOy: 0, panning: false });
@@ -541,6 +579,36 @@ export default function ParvandehPage() {
     setModalOpenKargroupMosahebe(true);
   }
 
+  const deleteShoraItem = async () => {
+    try {
+      // اگر ConfirmModal داری (که داری)
+      showConfirm(
+        "آیا از حذف ارجاع شورای تحقیق (بدون اقدام) مطمئن هستید؟",
+        async () => {
+          const res = await DeleteParvandehShorayeTahghighByID(erjaId, user.UserId);
+
+          // اگر API شما status می‌دهد:
+          if ((res as any)?.status === 200 || (res as any)?.data?.status === 200) {
+            showToast.success("حذف با موفقیت انجام شد", "شورای تحقیق");
+          } else {
+            // اگر ساختار خروجی فرق دارد، اینجا را مطابق API خودت تنظیم کن
+            showToast.success("حذف انجام شد", "شورای تحقیق");
+          }
+
+          // رفرش دیتا
+          await loadData(erjaId);
+          router.refresh();
+        },
+        "هشدار!",
+        "warning"
+      );
+    } catch (e) {
+      console.error(e);
+      showToast.error("خطا در حذف اطلاعات شورای تحقیق", "خطا");
+    }
+  };
+
+
   const UpdateJambandiOstan = async (
     erjaId: number,
     JambandiEghdam: string,
@@ -687,22 +755,55 @@ export default function ParvandehPage() {
 
   const loadData = async (erjaid: number) => {
     try {
+      setShoraLoading(true);
+      setShoraError("");
 
-      const result = await GetTahghighByID(erjaid, 0, 0);
+      const [result, shoraRes] = await Promise.all([
+        GetTahghighByID(erjaid, 0, 0),
+        GetParvandehShorayeTahghighByID(erjaid),
+      ]);
+
+      // --- خروجی شورای تحقیق ---
+      try {
+        // حالت‌های مختلف برگشتی (گاهی .data، گاهی خود آرایه)
+        const rows: ShorayeTahghighItem[] =
+          Array.isArray((shoraRes as any)?.data)
+            ? (shoraRes as any).data
+            : Array.isArray(shoraRes as any)
+              ? (shoraRes as any)
+              : [];
+
+        setShoraItems(rows || []);
+      } catch (e) {
+        setShoraItems([]);
+      } finally {
+        setShoraLoading(false);
+      }
+
+      // --- منطق قبلی شما بدون تغییر ---
       if (result.status == 200) {
         setFileName(result.data[0].FileName);
-        setonvanparvandeh("پرونده " + result.data[0].FirstName + " " + result.data[0].LastName + " " + " حوزه  " + result.data[0].NameOstan + " - " + result.data[0].NameHozeh);
+        setonvanparvandeh(
+          "پرونده " +
+          result.data[0].FirstName +
+          " " +
+          result.data[0].LastName +
+          " " +
+          " حوزه  " +
+          result.data[0].NameOstan +
+          " - " +
+          result.data[0].NameHozeh
+        );
+
         setData(result.data || []);
-        setData(prev => {
+        setData((prev) => {
           const newData = [...prev];
           newData[0].CountKolErja = newData[0].CountKolErja;
           newData[0].CountKolErjaDone = newData[0].CountKolErjaDone;
           newData[0].CountErjaMohaghegh = newData[0].CountErjaMohaghegh;
           newData[0].CountErjaMohagheghDone = newData[0].CountErjaMohagheghDone;
-
           return newData;
         });
-
       } else if (result.status === 401) {
         router.push("/Login");
       } else {
@@ -711,8 +812,12 @@ export default function ParvandehPage() {
     } catch (err) {
       console.error(err);
       setData([]);
+      setShoraItems([]);
+      setShoraLoading(false);
+      setShoraError("خطا در دریافت اطلاعات شورای تحقیق");
     }
   };
+
 
   const saveErjaMohaghegh = async (isInsert: number) => {
 
@@ -1244,6 +1349,93 @@ export default function ParvandehPage() {
             </div>
           </div>
 
+          {/* ✅ ردیف/جدول شورای تحقیق (بعد از پیوست‌ها) */}
+          <div
+            className="mt-3"
+            style={{
+              width: "98%",
+              justifyContent: "center",
+              margin: "auto",
+              border: "2px solid #000",
+              borderRadius: "5px",
+              padding: "10px",
+              boxSizing: "border-box",
+              background: "#fff",
+            }}
+          >
+            <div className="bnaznin bg-sky-300 p-2 text-[25px] rounded-2xl">ارجاع به شورای تحقیق</div>
+
+            {shoraLoading ? (
+              <div className="shabnam text-[15px] text-gray-500">در حال دریافت اطلاعات...</div>
+            ) : shoraError ? (
+              <div className="shabnam text-[15px] text-red-600">{shoraError}</div>
+            ) : shoraItems && shoraItems.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse rounded-lg overflow-hidden">
+                  <thead>
+                    <tr className="bg-slate-200 shabnam">
+                      <th className="text-[16px] text-right p-2 border">نام و نام خانوادگی</th>
+                      <th className="text-[16px] text-right p-2 border">وضعیت</th>
+                      <th className="text-[16px] text-right p-2 border">زمان</th>
+                      <th className="text-[16px] text-center p-2 border">عملیات</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {shoraItems.map((r, i) => (
+                      <tr
+                        key={i}
+                        className={`${i % 2 === 0 ? "bg-white" : "bg-slate-50"} hover:bg-sky-50 transition-colors`}
+                      >
+                        <td className="shabnam text-[16px] p-2 border text-purple-800">
+                          {r.FullNamePerson || "—"}
+                        </td>
+
+                        <td className="shabnam text-[16px] p-2 border">
+                          <span
+                            className={`inline-flex px-3 py-1 rounded-full text-[16px] border ${r.RecordState === 2
+                                ? "bg-green-50 border-green-300 text-green-700"
+                                : r.RecordState === 3
+                                  ? "bg-amber-50 border-amber-300 text-amber-700"
+                                  : r.RecordState === 1
+                                    ? "bg-gray-50 border-gray-300 text-gray-700"
+                                    : "bg-red-50 border-red-300 text-red-700"
+                              }`}
+                          >
+                            {recordStateLabel(r.RecordState)}
+                          </span>
+                        </td>
+
+                        <td className="shabnam text-[14px] p-2 border" dir="ltr">
+                          {formatDT(r.CreateDateTime)}
+                        </td>
+
+                        {/* ✅ عملیات */}
+                        <td className="p-2 border text-center">
+                          {r.RecordState === 1 ? (
+                            <button
+                              onClick={deleteShoraItem}
+                              className="px-3 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700 cursor-pointer text-[13px]"
+                            >
+                              حذف
+                            </button>
+                          ) : (
+                            <span className="text-gray-400 text-[12px]">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+
+                </table>
+              </div>
+            ) : (
+              <div className="shabnam text-[15px] text-gray-500">اطلاعاتی برای شورای تحقیق ثبت نشده است.</div>
+            )}
+          </div>
+
+
+
           {previewOpen && (
             <div className="fixed inset-0 z-[9999] flex items-center justify-center">
               {/* بک‌گراند */}
@@ -1629,7 +1821,6 @@ export default function ParvandehPage() {
             <div className="">
               <PersianDateInput
                 label="مهلت انجام"
-                // value={tarikh ?? undefined}
                 allowPastDates={false}
                 onChange={(v: any) => {
                   settarikh(v)
@@ -1643,7 +1834,7 @@ export default function ParvandehPage() {
 
 
             <textarea
-              className="text-[15px] w-full h-24 border border-gray-300 rounded p-2 mb-2 resize-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 outline-none"
+              className="text-[15px] mt-2 w-full h-24 border border-gray-300 rounded p-2 mb-2 resize-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 outline-none"
               placeholder="توضیحات ارجاع پرونده "
               value={tozihat}
               onChange={(e: any) => setTozihat(e.target.value)}

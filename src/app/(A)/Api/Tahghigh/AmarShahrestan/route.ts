@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
     // ✅ ورودی
     const body = await req.json();
     const mahal = Number(body?.mahal);
+    const userId = Number(body?.userId);
 
     if (!mahal) {
         return NextResponse.json(
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
         const result = await pool
             .request()
             .input("Mahal", sql.Int, mahal)
+            .input("UserId", sql.BigInt, userId)
             .execute("Tahghighat.SP_GetAmarTahghighatSahahrestan");
 
         return NextResponse.json({ status: 200, data: result.recordset }, { status: 200 });

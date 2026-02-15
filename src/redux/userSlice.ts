@@ -5,6 +5,7 @@ interface UserState {
   UserId: number;
   Mahal: number;
   FullName: string;
+  PostId: number;
   OnvanSemat: string;
   IsMarkazShahrestan: string;
   DateNow: string;
@@ -14,6 +15,7 @@ const initialState: UserState = {
   UserName: "",
   UserId: 0,
   Mahal: 0,
+  PostId: 0,
   FullName: "",
   OnvanSemat: "",
   DateNow: "",

@@ -182,7 +182,6 @@ export default function TopBar() {
                 )}
             </div>
 
-            {/* Right Side */}
             <div className="flex flex-col md:flex-row items-center gap-3 md:gap-6 me-8 md:me-16">
                 <div className="p-3 h-8 bg-sky-100 rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white">
                     <span>تاریخ روز :</span>
