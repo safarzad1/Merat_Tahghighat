@@ -49,6 +49,7 @@ export async function POST(req: Request) {
         UserName: user.CodeMelli,
         UserId: user.UserId,
         Mahal: user.Mahal,
+        PostId: user.PostId,
         FullName: user.FullName,
         NameMahal: user.NameMahal,
         DateNow: user.DateNow,

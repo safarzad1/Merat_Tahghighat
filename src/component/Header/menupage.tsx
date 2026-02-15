@@ -22,7 +22,6 @@ export default function TopBar() {
     const [openDavtalab, setOpenDavtalab] = useState(false);
     const [openUsers, setOpenUsers] = useState(false);
 
-    // ✅ دو ref جدا برای دو منوی مستقل
     const davtalabRef = useRef<HTMLDivElement>(null);
     const usersRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +33,6 @@ export default function TopBar() {
         router.push("/Login");
     };
 
-    // ✅ کلیک بیرون = بستن هر دو منو
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             const target = event.target as Node;
@@ -54,6 +52,44 @@ export default function TopBar() {
 
     const mahalLen = user?.Mahal?.toString()?.length ?? 0;
 
+    // ✅ مهم: PostId را عددی کن که "56" هم درست تشخیص داده شود
+    const postId = Number(user?.PostId);
+
+    // ✅ اگر PostId = 56 فقط 3 آیتم را نشان بده
+    if (postId === 56) {
+        return (
+            <div className="bg-white w-full mt-0.5 h-10 md:h-10 border-r-gray-500 shadow-md flex items-center justify-between px-4 gap-5 md:px-8">
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={logout}
+                        className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white"
+                    >
+                        <LogOut size={16} className="text-red-600" />
+                        <span>خروج از حساب</span>
+                    </button>
+
+                    <div className="text-indigo-700">|</div>
+
+                    <Link
+                        href="/TahghighatManage"
+                        className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white"
+                    >
+                        <FolderCog size={16} className="text-blue-600" />
+                        <span>مدیریت تحقیقات</span>
+                    </Link>
+                </div>
+
+                <div className="flex flex-col md:flex-row items-center gap-3 md:gap-6 me-8 md:me-16">
+                    <div className="p-3 h-8 bg-sky-100 rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white">
+                        <span>تاریخ روز :</span>
+                        <span>{user?.DateNow}</span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // ✅ حالت عادی (همون منوی کامل شما)
     return (
         <div className="bg-white w-full mt-0.5 h-10 md:h-10 border-r-gray-500 shadow-md flex items-center justify-between px-4 gap-5 md:px-8">
             {/* Left Side */}
@@ -88,14 +124,18 @@ export default function TopBar() {
                     <span>مدیریت تحقیقات</span>
                 </Link>
 
-                <div className="text-indigo-700">|</div>
-                <Link
-                    href="/Persons/Hamkari"
-                    className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white"
-                >
-                    <Users size={16} className="text-blue-600" />
-                    <span>همکاران</span>
-                </Link>
+                {postId !== 56 && (
+                    <>
+                        <div className="text-indigo-700">|</div>
+                        <Link
+                            href="/Persons/Hamkari"
+                            className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white"
+                        >
+                            <Users size={16} className="text-blue-600" />
+                            <span>همکاران</span>
+                        </Link>
+                    </>
+                )}
 
                 <div className="text-indigo-700">|</div>
 
@@ -104,7 +144,7 @@ export default function TopBar() {
                     <div
                         onClick={() => {
                             setOpenDavtalab((prev) => !prev);
-                            setOpenUsers(false); // ✅ اگر این باز شد اون یکی بسته شه
+                            setOpenUsers(false);
                         }}
                         className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white select-none"
                     >
@@ -146,7 +186,7 @@ export default function TopBar() {
                             <div
                                 onClick={() => {
                                     setOpenUsers((prev) => !prev);
-                                    setOpenDavtalab(false); // ✅ اگر این باز شد اون یکی بسته شه
+                                    setOpenDavtalab(false);
                                 }}
                                 className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white select-none"
                             >

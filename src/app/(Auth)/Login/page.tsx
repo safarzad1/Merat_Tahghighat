@@ -64,7 +64,7 @@ export default function LoginPage() {
 
         try {
             const result = await Login(data.username, data.password, ip);
-            // console.log(result);
+             console.log(result);
             // console.log(result.status);
 
             if (result.status === 200) {
