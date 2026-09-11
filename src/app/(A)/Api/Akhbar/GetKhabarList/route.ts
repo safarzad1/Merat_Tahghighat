@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const { userId, page = 1, sizepage = 10, indexsort = 1, ascdesc = 2, search = "" } = body;
+        const { userId, page = 1, sizepage = 20, indexsort = 1, ascdesc = 2, search = "", boxType = 1 } = body;
         if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
 
         const pool = await getConnection();
@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
             .input("SortIndex", sql.Int, indexsort)
             .input("SECDEC", sql.Int, ascdesc)
             .input("Search", sql.NVarChar(200), search)
+            .input("BoxType", sql.Int, boxType)
             .execute("[Akhbar].[SP_GetKhabarPage]");
 
         return NextResponse.json({ status: 200, data: result.recordset || [] });

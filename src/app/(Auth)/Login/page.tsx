@@ -75,6 +75,7 @@ export default function LoginPage() {
                     FullName: result.data.fullName || result.data.FullName || "",
                     PostId: result.data.PostId || result.data.PostId || "",
                     OnvanSemat: result.data.onvanSemat || result.data.NameMahal || "",
+                    OnvanPost: result.data.OnvanPost || result.data.onvanPost || "",
                     DateNow: result.data.dateNow || result.data.DateNow || "",
                     IsMarkazShahrestan: result.data.IsMarkazShahrestan || "",
                 }));

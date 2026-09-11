@@ -26,9 +26,14 @@ import {
   Video,
   HelpCircle,
   FileImage,
+  Eye,
+  Send,
+  Inbox,
+  RotateCcw,
+  History,
+  Clock3,
 } from "lucide-react";
 import Breadcrumbkhabar from "@/component/Breadcrumb/Breadcrumb";
-import DynamicTable from "@/component/DataTable/CustomTable1";
 import FormInput from "@/component/Objects/FormInput1";
 import TextArea from "@/component/Objects/Textarea1";
 import PersianDateInput from "@/component/Objects/InputPersianDatePicker";
@@ -38,6 +43,7 @@ import DropDownSelect from "@/component/Objects/DropDownSelect";
 import { RootState } from "@/redux/store";
 import { useConfirm } from "@/Utils/ConfirmModalContext";
 import { showToast } from "@/component/CustomToast";
+import { DFNByPID } from "@/Lib/ApiService";
 import {
   DeleteKhabar,
   GetAkhbarLookups,
@@ -54,6 +60,11 @@ import {
   GetKhabarPeyvastha,
   DeleteKhabarPeyvast,
   GetKhabarPeyvastUrl,
+  SendKhabar,
+  GetNextKhabarDestination,
+  GetKhabarCounts,
+  ReturnKhabar,
+  GetKhabarGardesh,
 } from "@/Lib/ApiServiceAkhbar";
 
 type LookupItem = {
@@ -77,11 +88,30 @@ type KhabarPeyvast = {
   KhabarPeyvastId: number;
   ShomareKhabar: number;
   FileName: string;
+  OriginalFileName?: string;
   FileSize: number;
   CreateDateTime: string;
 };
 
 type PeyvastKind = "image" | "video" | "audio" | "unknown";
+
+type BoxType = 1 | 2 | 3;
+type ReturnTag = { ID: number; NameFarsi: string };
+type GardeshSummary = {
+  ShomareKhabar: number;
+  OnvanKhabar: string;
+  CurrentStatusCode: string;
+  CurrentStatusName: string;
+  CurrentUserName: string;
+  CurrentPostName: string;
+  CurrentMahalName: string;
+  StatusDateTime: string;
+};
+type GardeshLog = {
+  LogId: number; NoeEghdam: string; ActionCode: string; Tozihat?: string; EshkalatIds?: string; CreateDateTime: string;
+  FromUserName?: string; FromPostName?: string; FromMahalName?: string;
+  ToUserName?: string; ToPostName?: string; ToMahalName?: string;
+};
 
 function getPeyvastKind(fileName: string): PeyvastKind {
   const ext = (fileName.split(".").pop() || "").toLowerCase();
@@ -158,6 +188,27 @@ export default function AkhbarManagePage() {
   const [attachmentLoading, setAttachmentLoading] = useState(false);
   const [attachmentUploading, setAttachmentUploading] = useState(false);
   const [attachmentActionLoading, setAttachmentActionLoading] = useState<number | null>(null);
+  const [reviewDetail, setReviewDetail] = useState<any>(null);
+  const [readOnlyMode, setReadOnlyMode] = useState(false);
+  const [workflowSending, setWorkflowSending] = useState(false);
+  const [sendResult, setSendResult] = useState<any>(null);
+  const [destinationModalOpen, setDestinationModalOpen] = useState(false);
+  const [sendConfirmModalOpen, setSendConfirmModalOpen] = useState(false);
+  const [sendPreviewLoading, setSendPreviewLoading] = useState(false);
+  const [nextDestination, setNextDestination] = useState<any>(null);
+  const [sendDescription, setSendDescription] = useState("");
+
+  const [boxType, setBoxType] = useState<BoxType>(1);
+  const [boxCounts, setBoxCounts] = useState({ KartablCount: 0, SentCount: 0, ReturnedCount: 0 });
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
+  const [returnReason, setReturnReason] = useState("");
+  const [returnTags, setReturnTags] = useState<ReturnTag[]>([]);
+  const [selectedReturnTags, setSelectedReturnTags] = useState<number[]>([]);
+  const [returnSaving, setReturnSaving] = useState(false);
+  const [cycleModalOpen, setCycleModalOpen] = useState(false);
+  const [cycleLoading, setCycleLoading] = useState(false);
+  const [cycleSummary, setCycleSummary] = useState<GardeshSummary | null>(null);
+  const [cycleLogs, setCycleLogs] = useState<GardeshLog[]>([]);
 
 
   const tourSteps: Step[] = useMemo(() => {
@@ -174,7 +225,7 @@ export default function AkhbarManagePage() {
     if (currentStep === 2) {
       return [
         { target: '[data-tour="wizard-steps"]', content: "اکنون در مرحله تعیین اشخاص وابسته به خبر هستید.", placement: "bottom", disableBeacon: true },
-        { target: '[data-tour="person-search"]', content: "نام، نام خانوادگی یا نام پدر را وارد کنید. جستجو دو ثانیه بعد از آخرین تایپ و در SQL انجام می‌شود.", placement: "bottom" },
+        { target: '[data-tour="person-search"]', content: "نام، نام خانوادگی یا نام پدر را وارد کنید. جستجو دو ثانیه بعد از آخرین تایپ انجام می‌شود.", placement: "bottom" },
         { target: '[data-tour="person-linked"]', content: "اشخاص اضافه‌شده به خبر اینجا نمایش داده می‌شوند و در صورت نیاز قابل حذف هستند.", placement: "top" },
         { target: '[data-tour="wizard-next"]', content: "بعد از تکمیل اشخاص، به مرحله پیوست‌ها بروید.", placement: "top" },
       ];
@@ -191,8 +242,8 @@ export default function AkhbarManagePage() {
     }
     return [
       { target: '[data-tour="wizard-steps"]', content: "این مرحله برای مرور نهایی اطلاعات خبر است.", placement: "bottom", disableBeacon: true },
-      { target: '[data-tour="review-info"]', content: "مشخصات اصلی خبر را قبل از بستن یا ارسال بررسی کنید.", placement: "top" },
-      { target: '[data-tour="review-relations"]', content: "تعداد اشخاص وابسته و پیوست‌های خبر در این بخش خلاصه شده است.", placement: "top" },
+      { target: '[data-tour="review-info"]', content: "اطلاعات خبر در جدول عنوان و محتوا نمایش داده می‌شود؛ قبل از ادامه آن را بررسی کنید.", placement: "top" },
+      { target: '[data-tour="review-relations"]', content: "پیوست‌ها با نام فایل و نمای کوچک در کنار پیش‌نمایش نمایش داده می‌شوند.", placement: "right" },
     ];
   }, [currentStep]);
 
@@ -221,12 +272,12 @@ export default function AkhbarManagePage() {
   const personPageSize = 8;
 
   const [page, setPage] = useState(1);
-  const [sizePage] = useState(10);
+  const [sizePage, setSizePage] = useState(20);
   const [totalRecord, setTotalRecord] = useState(0);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [sortIndex, setSortIndex] = useState(1);
-  const [sortDirection, setSortDirection] = useState(2);
+  const sortIndex = 1;
+  const sortDirection = 2;
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -278,7 +329,8 @@ export default function AkhbarManagePage() {
         sizePage,
         sortIndex,
         sortDirection,
-        debouncedSearch
+        debouncedSearch,
+        boxType
       );
       const data = res?.data || [];
       setRows(data);
@@ -290,7 +342,21 @@ export default function AkhbarManagePage() {
     } finally {
       setLoading(false);
     }
-  }, [user?.UserId, page, sizePage, sortIndex, sortDirection, debouncedSearch]);
+  }, [user?.UserId, page, sizePage, sortIndex, sortDirection, debouncedSearch, boxType]);
+
+  const loadBoxCounts = useCallback(async () => {
+    if (!user?.UserId) return;
+    try {
+      const res = await GetKhabarCounts(user.UserId);
+      setBoxCounts({
+        KartablCount: Number(res?.data?.KartablCount || 0),
+        SentCount: Number(res?.data?.SentCount || 0),
+        ReturnedCount: Number(res?.data?.ReturnedCount || 0),
+      });
+    } catch {
+      setBoxCounts({ KartablCount: 0, SentCount: 0, ReturnedCount: 0 });
+    }
+  }, [user?.UserId]);
 
   useEffect(() => {
     void loadLookups();
@@ -299,6 +365,10 @@ export default function AkhbarManagePage() {
   useEffect(() => {
     void loadRows();
   }, [loadRows]);
+
+  useEffect(() => {
+    void loadBoxCounts();
+  }, [loadBoxCounts]);
 
   const loadLinkedPersons = useCallback(async () => {
     if (!user?.UserId || !form.shomareKhabar) {
@@ -344,7 +414,7 @@ export default function AkhbarManagePage() {
   }, [form.shomareKhabar, user?.UserId, personDebouncedSearch, personSearchPage]);
 
   useEffect(() => {
-    if (currentStep !== 2) return;
+    if (currentStep !== 2 && currentStep !== 4) return;
     void loadLinkedPersons();
   }, [currentStep, loadLinkedPersons]);
 
@@ -384,6 +454,20 @@ export default function AkhbarManagePage() {
     if (currentStep !== 3 && currentStep !== 4) return;
     void loadAttachments();
   }, [currentStep, loadAttachments]);
+
+  useEffect(() => {
+    if (currentStep !== 4 || !user?.UserId || !form.shomareKhabar) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await GetKhabar(form.shomareKhabar, user.UserId);
+        if (!cancelled) setReviewDetail(res?.data || null);
+      } catch {
+        if (!cancelled) setReviewDetail(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentStep, user?.UserId, form.shomareKhabar]);
 
   const handleUploadAttachment = async (files: FileList | null) => {
     if (!files?.length || !user?.UserId || !form.shomareKhabar) return;
@@ -484,6 +568,12 @@ export default function AkhbarManagePage() {
     setPersonSearchTotal(0);
     setAttachments([]);
     setActiveAttachmentId(null);
+    setReviewDetail(null);
+    setReadOnlyMode(false);
+    setSendResult(null);
+    setSendConfirmModalOpen(false);
+    setNextDestination(null);
+    setSendDescription("");
     setTourRun(false);
     setModalOpen(true);
   };
@@ -519,6 +609,52 @@ export default function AkhbarManagePage() {
       setLinkedPersons([]);
       setPersonSearchPage(1);
       setPersonSearchTotal(0);
+      setReviewDetail(d);
+      setReadOnlyMode(false);
+      setSendResult(null);
+      setSendConfirmModalOpen(false);
+      setNextDestination(null);
+      setSendDescription("");
+      setModalOpen(true);
+    } catch (e) {
+      showToast.error(e instanceof Error ? e.message : "خطا در دریافت خبر");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openView = async (row: any) => {
+    if (!user?.UserId) return;
+    setLoading(true);
+    try {
+      const res = await GetKhabar(row.ShomareKhabar, user.UserId);
+      const d = res?.data;
+      if (!d) {
+        showToast.warning("اطلاعات خبر یافت نشد یا دسترسی مشاهده ندارید");
+        return;
+      }
+      setForm({
+        shomareKhabar: Number(d.ShomareKhabar || 0),
+        tabaqehBandi: Number(d.TabaqehBandi || 1),
+        manbaKhabarId: Number(d.ManbaKhabarId || 0),
+        noeKhabar: Number(d.NoeKhabar || 1),
+        tarikhNameh: (d.TarikhNameh || "").trim(),
+        shomareNameh: d.ShomareNameh || "",
+        onvanKhabar: d.OnvanKhabar || "",
+        sharhKhabar: d.SharhKhabar || "",
+        molahazatKhabar: d.MolahazatKhabar || "",
+        noghteKhabarkhizId: Number(d.NoghteKhabarkhizId || 0),
+        mahalNoghteKhabarkhiz: d.MahalNoghteKhabarkhiz || "",
+        tarikhEnteshar: (d.TarikhEnteshar || "").trim(),
+      });
+      setErrors({});
+      setReviewDetail(d);
+      setReadOnlyMode(true);
+      setSendResult(null);
+      setCurrentStep(4);
+      setLinkedPersons([]);
+      setAttachments([]);
+      setActiveAttachmentId(null);
       setModalOpen(true);
     } catch (e) {
       showToast.error(e instanceof Error ? e.message : "خطا در دریافت خبر");
@@ -613,11 +749,126 @@ export default function AkhbarManagePage() {
     }
   };
 
+  const prepareSendKhabar = async () => {
+    if (!user?.UserId || !form.shomareKhabar || sendPreviewLoading || workflowSending) return;
+    setSendPreviewLoading(true);
+    try {
+      const res = await GetNextKhabarDestination(form.shomareKhabar, user.UserId);
+      const d = res?.data;
+      if (!d?.ToUserId) throw new Error("مقصد بعدی خبر مشخص نشد");
+      setNextDestination(d);
+      setSendDescription("");
+      setSendConfirmModalOpen(true);
+    } catch (e) {
+      showToast.error(e instanceof Error ? e.message : "خطا در تعیین مقصد بعدی خبر");
+    } finally {
+      setSendPreviewLoading(false);
+    }
+  };
+
+  const handleSendKhabar = async () => {
+    if (!user?.UserId || !form.shomareKhabar || workflowSending) return;
+    setWorkflowSending(true);
+    try {
+      const res = await SendKhabar(form.shomareKhabar, user.UserId, sendDescription.trim(), Number(nextDestination?.ToUserId || 0));
+      const d = res?.data;
+      if (!d?.ToUserId) throw new Error("مقصد بعدی خبر مشخص نشد");
+      setSendResult(d);
+      setSendConfirmModalOpen(false);
+      setNextDestination(null);
+      setSendDescription("");
+      setTourRun(false);
+      setModalOpen(false);
+      setCurrentStep(1);
+      setReadOnlyMode(false);
+      setDestinationModalOpen(true);
+      showToast.success(reviewDetail?.IsInbox ? "خبر تأیید و به مرحله بالاتر ارسال شد" : "خبر با موفقیت ارسال شد");
+      await Promise.all([loadRows(), loadBoxCounts()]);
+    } catch (e) {
+      showToast.error(e instanceof Error ? e.message : "خطا در ارسال خبر");
+    } finally {
+      setWorkflowSending(false);
+    }
+  };
+
+  const openReturnModal = async () => {
+    setReturnReason("");
+    setSelectedReturnTags([]);
+    setReturnModalOpen(true);
+    try {
+      const result = await DFNByPID(71104);
+      const list = result?.recordset || result?.data || result || [];
+      setReturnTags(list.map((x: any) => ({ ID: Number(x.ID), NameFarsi: String(x.NameFarsi || "") })).filter((x: ReturnTag) => x.ID && x.NameFarsi));
+    } catch {
+      setReturnTags([]);
+    }
+  };
+
+  const toggleReturnTag = (tag: ReturnTag) => {
+    const line = `• ${tag.NameFarsi}`;
+    const selected = selectedReturnTags.includes(tag.ID);
+    if (selected) {
+      setSelectedReturnTags((prev) => prev.filter((id) => id !== tag.ID));
+      setReturnReason((prev) => prev.split("\n").filter((x) => x.trim() !== line).join("\n").trim());
+    } else {
+      setSelectedReturnTags((prev) => [...prev, tag.ID]);
+      setReturnReason((prev) => (prev.trim() ? `${prev.trim()}\n${line}` : line));
+    }
+  };
+
+  const handleReturnKhabar = async () => {
+    if (!user?.UserId || !form.shomareKhabar || returnSaving) return;
+    if (!returnReason.trim()) { showToast.warning("علت برگشت خبر را وارد کنید"); return; }
+    setReturnSaving(true);
+    try {
+      const res = await ReturnKhabar(form.shomareKhabar, user.UserId, returnReason.trim(), selectedReturnTags.join(","));
+      const d = res?.data;
+      if (!d?.ToUserId) throw new Error("فرستنده قبلی خبر مشخص نشد");
+      setSendResult(d);
+      setReturnModalOpen(false);
+      setModalOpen(false);
+      setDestinationModalOpen(true);
+      setCurrentStep(1);
+      setReadOnlyMode(false);
+      showToast.success("خبر برای تکمیل به فرستنده برگشت داده شد");
+      await Promise.all([loadRows(), loadBoxCounts()]);
+    } catch (e) {
+      showToast.error(e instanceof Error ? e.message : "خطا در برگشت خبر");
+    } finally {
+      setReturnSaving(false);
+    }
+  };
+
+  const openCycle = async (rowOrNumber: any) => {
+    if (!user?.UserId) return;
+    const shomare = Number(typeof rowOrNumber === "number" ? rowOrNumber : rowOrNumber?.ShomareKhabar || form.shomareKhabar);
+    if (!shomare) return;
+    setCycleModalOpen(true);
+    setCycleLoading(true);
+    setCycleSummary(null);
+    setCycleLogs([]);
+    try {
+      const res = await GetKhabarGardesh(shomare, user.UserId);
+      setCycleSummary(res?.summary || null);
+      setCycleLogs(res?.logs || []);
+    } catch (e) {
+      showToast.error(e instanceof Error ? e.message : "خطا در دریافت چرخه خبر");
+      setCycleModalOpen(false);
+    } finally {
+      setCycleLoading(false);
+    }
+  };
+
   const closeWizard = async () => {
     setTourRun(false);
     setModalOpen(false);
     setCurrentStep(1);
-    await loadRows();
+    setReadOnlyMode(false);
+    setSendResult(null);
+    setSendConfirmModalOpen(false);
+    setNextDestination(null);
+    setSendDescription("");
+    await Promise.all([loadRows(), loadBoxCounts()]);
   };
 
   const handleDelete = async (shomareKhabar: number) => {
@@ -627,35 +878,11 @@ export default function AkhbarManagePage() {
       showToast.success("خبر حذف شد");
       if (rows.length === 1 && page > 1) setPage((p) => p - 1);
       else await loadRows();
+      await loadBoxCounts();
     } catch (e) {
       showToast.error(e instanceof Error ? e.message : "خطا در حذف خبر");
     }
   };
-
-  const sortMap = useMemo<Record<string, number>>(
-    () => ({
-      ShomareKhabar: 1,
-      OnvanKhabar: 2,
-      TabaqehBandiName: 3,
-      NoeKhabarName: 4,
-      CreateDateTime: 5,
-    }),
-    []
-  );
-
-  const columns = useMemo(
-    () => [
-      { title: "ردیف", field: "Rdf", width: "70px" },
-      { title: "شماره خبر", field: "ShomareKhabar", width: "110px" },
-      { title: "عنوان خبر", field: "OnvanKhabar" },
-      { title: "طبقه‌بندی", field: "TabaqehBandiName", width: "130px" },
-      { title: "نوع خبر", field: "NoeKhabarName", width: "110px" },
-      { title: "منبع خبر", field: "ManbaKhabarName", width: "150px" },
-      { title: "تاریخ انتشار", field: "TarikhEnteshar", width: "120px" },
-      { title: "تاریخ ایجاد", field: "CreateDateTime", width: "170px" },
-    ],
-    []
-  );
 
   return (
     <div className="relative">
@@ -685,53 +912,164 @@ export default function AkhbarManagePage() {
         />
       </div>
 
-      <div className="bg-white m-1 p-3 rounded-b-xl shadow-sm min-h-[400px]">
-        <DynamicTable
-          data={rows}
-          columns={columns}
-          title="اخبار ثبت‌شده توسط من"
-          totalRecord={totalRecord}
-          recordsPerPage={sizePage}
-          page={page}
-          search={search}
-          onPageChange={setPage}
-          onSearch={setSearch}
-          onRefresh={() => void loadRows()}
-          onSortChange={(field, direction) => {
-            setSortIndex(sortMap[field] || 1);
-            setSortDirection(direction === "asc" ? 1 : 2);
-            setPage(1);
-          }}
-          rowKeyField="ShomareKhabar"
-          headerActions={[
-            {
-              icon: <Plus size={17} />,
-              title: "ثبت خبر جدید",
-              onClick: openCreate,
-              className: "bg-blue-600 hover:bg-blue-500",
-            },
-          ]}
-          actions={[
-            {
-              icon: <Pencil size={15} />,
-              title: "ویرایش",
-              colorClass: "bg-amber-500",
-              onClick: (row) => void openEdit(row),
-            },
-            {
-              icon: <Trash2 size={15} />,
-              title: "حذف",
-              colorClass: "bg-red-600",
-              onClick: (row) =>
-                showConfirm(
-                  `خبر شماره ${row.ShomareKhabar} حذف شود؟`,
-                  () => void handleDelete(Number(row.ShomareKhabar)),
-                  "حذف خبر",
-                  "error"
-                ),
-            },
-          ]}
-        />
+      <div className="bg-white m-1 p-4 rounded-b-xl shadow-sm min-h-[430px]">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+          {[
+            { id: 1 as BoxType, title: "کارتابل", count: boxCounts.KartablCount, icon: Inbox, active: "border-sky-500 bg-sky-50 text-sky-900", iconClass: "bg-sky-600" },
+            { id: 2 as BoxType, title: "ارسال شده", count: boxCounts.SentCount, icon: Send, active: "border-emerald-500 bg-emerald-50 text-emerald-900", iconClass: "bg-emerald-600" },
+            { id: 3 as BoxType, title: "برگشت شده", count: boxCounts.ReturnedCount, icon: RotateCcw, active: "border-amber-500 bg-amber-50 text-amber-900", iconClass: "bg-amber-600" },
+          ].map((box) => {
+            const BoxIcon = box.icon;
+            const selected = boxType === box.id;
+            return (
+              <button
+                key={box.id}
+                type="button"
+                onClick={() => { setBoxType(box.id); setPage(1); }}
+                className={`rounded-xl border px-3 py-2 text-right transition cursor-pointer ${selected ? box.active : "border-gray-200 bg-white hover:bg-gray-50 text-gray-700"}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-8 h-8 rounded-lg text-white flex items-center justify-center ${box.iconClass}`}><BoxIcon size={16} /></div>
+                    <div>
+                      <div className="text-[13px]">{box.title}</div>
+                      <div className="text-[10px] opacity-65 leading-4">اخبار مربوط به سمت و محل فعلی شما</div>
+                    </div>
+                  </div>
+                  <div className="min-w-8 h-8 px-2 rounded-lg bg-white/80 border flex items-center justify-center text-[14px]">{box.count}</div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 rounded-xl border bg-gray-50 p-3">
+          <div className="relative flex-1 max-w-xl">
+            <Search size={17} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="جستجو در شماره، عنوان یا منبع خبر..."
+              className="w-full h-10 rounded-lg border border-gray-300 bg-white pr-9 pl-3 outline-none focus:border-sky-500 text-[13px]"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => { void loadRows(); void loadBoxCounts(); }} className="h-10 px-4 rounded-lg border bg-white hover:bg-gray-100 cursor-pointer text-[12px]">به‌روزرسانی</button>
+            <button type="button" onClick={openCreate} className="h-10 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white inline-flex items-center gap-2 cursor-pointer text-[12px]"><Plus size={16} /> ثبت خبر جدید</button>
+          </div>
+        </div>
+
+        {rows.length === 0 && !loading ? (
+          <div className="h-56 rounded-2xl border border-dashed flex flex-col items-center justify-center text-gray-400 gap-2">
+            <Newspaper size={34} strokeWidth={1.4} />
+            <div className="text-[13px]">خبری در این بخش وجود ندارد.</div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white" dir="rtl">
+            <table className="w-full min-w-[1080px] border-collapse text-[11px]">
+              <thead>
+                <tr className="bg-gray-100 text-gray-700">
+                  <th className="w-14 border-b px-2.5 py-1.5 text-center font-normal">ردیف</th>
+                  <th className="w-24 border-b px-2.5 py-1.5 text-center font-normal">شماره خبر</th>
+                  <th className="border-b px-2.5 py-1.5 text-right font-normal">عنوان خبر</th>
+                  <th className="w-44 border-b px-2.5 py-1.5 text-right font-normal">وضعیت</th>
+                  <th className="w-40 border-b px-2.5 py-1.5 text-right font-normal">محل فعلی</th>
+                  <th className="w-44 border-b px-2.5 py-1.5 text-right font-normal">سمت فعلی</th>
+                  <th className="w-36 border-b px-2.5 py-1.5 text-center font-normal">آخرین تغییر</th>
+                  <th className="w-64 border-b px-2.5 py-1.5 text-center font-normal">عملیات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, index) => {
+                  const isDraft = row.CurrentStatusCode === "PISHNEVIS";
+                  const isReturned = String(row.CurrentStatusCode || "").startsWith("BARGASHT_");
+                  return (
+                    <tr key={row.ShomareKhabar} className="odd:bg-white even:bg-gray-50/60 hover:bg-sky-50/50 transition-colors">
+                      <td className="border-b px-2.5 py-1.5 text-center text-gray-500">{(page - 1) * sizePage + index + 1}</td>
+                      <td className="border-b px-2.5 py-1.5 text-center text-sky-800">{row.ShomareKhabar}</td>
+                      <td className="border-b px-2.5 py-1.5">
+                        <div className="text-[12px] text-gray-900 leading-5">{row.OnvanKhabar || "—"}</div>
+                        <div className="text-[9px] text-gray-400 leading-4">{row.NoeKhabarName || "—"} · {row.ManbaKhabarName || "—"}</div>
+                      </td>
+                      <td className="border-b px-2.5 py-1.5">
+                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-[9px] ${isReturned ? "bg-amber-50 text-amber-800 border-amber-200" : isDraft ? "bg-gray-100 text-gray-700 border-gray-200" : "bg-sky-50 text-sky-800 border-sky-200"}`}>
+                          {row.CurrentStatusName || "در حال گردش"}
+                        </span>
+                      </td>
+                      <td className="border-b px-2.5 py-1.5 text-gray-700">{row.CurrentMahalName || "—"}</td>
+                      <td className="border-b px-2.5 py-1.5 text-gray-700">{row.CurrentPostName || (isDraft ? "ایجادکننده خبر" : "—")}</td>
+                      <td className="border-b px-2.5 py-1.5 text-center text-[10px] text-gray-500 whitespace-nowrap">{row.StatusDateTime || row.CreateDateTime || "—"}</td>
+                      <td className="border-b px-2.5 py-1.5">
+                        <div className="flex items-center justify-center gap-1 whitespace-nowrap">
+                          <button type="button" onClick={() => void openCycle(row)} className="h-7 px-2 rounded-md border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-800 inline-flex items-center gap-1 cursor-pointer text-[11px]"><History size={12} /> چرخه خبر</button>
+                          {(Number(row.IsInbox) === 1 || (Number(row.IsOwner) === 1 && isDraft)) && (
+                            <button
+                              type="button"
+                              onClick={() => void openEdit(row)}
+                              className="w-7 h-7 rounded-md bg-amber-500 text-white flex items-center justify-center cursor-pointer"
+                              title={isReturned ? "اصلاح خبر برگشتی" : "ویرایش خبر"}
+                            >
+                              <Pencil size={12} />
+                            </button>
+                          )}
+                          {Number(row.IsOwner) === 1 && isDraft && (
+                            <button type="button" onClick={() => showConfirm(`خبر شماره ${row.ShomareKhabar} حذف شود؟`, () => void handleDelete(Number(row.ShomareKhabar)), "حذف خبر", "error")} className="w-7 h-7 rounded-md bg-red-600 text-white flex items-center justify-center cursor-pointer" title="حذف"><Trash2 size={12} /></button>
+                          )}
+                          <button type="button" onClick={() => void openView(row)} className="h-7 px-2.5 rounded-md bg-sky-600 hover:bg-sky-500 text-white inline-flex items-center gap-1 cursor-pointer text-[11px]"><Eye size={12} /> مشاهده</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="mt-3 flex flex-col sm:flex-row items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-600" dir="rtl">
+          <div className="flex items-center gap-2">
+            <span>تعداد در صفحه:</span>
+            <select
+              value={sizePage}
+              onChange={(e) => { setSizePage(Number(e.target.value)); setPage(1); }}
+              className="h-7 rounded-md border border-gray-300 bg-white px-2 outline-none font-[Shabnam] text-[11px]"
+            >
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <span className="text-gray-400">|</span>
+            <span>
+              {totalRecord === 0
+                ? "0 خبر"
+                : `نمایش ${(page - 1) * sizePage + 1} تا ${Math.min(page * sizePage, totalRecord)} از ${totalRecord} خبر`}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="w-7 h-7 rounded-md border bg-white disabled:opacity-40 cursor-pointer disabled:cursor-default flex items-center justify-center"
+              title="صفحه قبل"
+            >
+              <ChevronRight size={14} />
+            </button>
+            <div className="px-3 h-7 rounded-md border bg-white flex items-center whitespace-nowrap">
+              صفحه {page} از {Math.max(1, Math.ceil(totalRecord / sizePage))}
+            </div>
+            <button
+              type="button"
+              disabled={page >= Math.max(1, Math.ceil(totalRecord / sizePage))}
+              onClick={() => setPage((p) => p + 1)}
+              className="w-7 h-7 rounded-md border bg-white disabled:opacity-40 cursor-pointer disabled:cursor-default flex items-center justify-center"
+              title="صفحه بعد"
+            >
+              <ChevronLeft size={14} />
+            </button>
+          </div>
+        </div>
       </div>
 
       {loading && (
@@ -964,10 +1302,15 @@ export default function AkhbarManagePage() {
                             value={form.noghteKhabarkhizId}
                             onChange={(v) => setField("noghteKhabarkhizId", v)}
                             placeholder="انتخاب نشده"
-                            options={hotspots.map((item) => ({
-                              value: Number(item.NoghteKhabarkhizId || 0),
-                              label: item.Onvan,
-                            }))}
+                            options={[
+                              ...(form.noghteKhabarkhizId && reviewDetail?.NoghteKhabarkhizName && !hotspots.some((item) => Number(item.NoghteKhabarkhizId) === Number(form.noghteKhabarkhizId))
+                                ? [{ value: Number(form.noghteKhabarkhizId), label: String(reviewDetail.NoghteKhabarkhizName) }]
+                                : []),
+                              ...hotspots.map((item) => ({
+                                value: Number(item.NoghteKhabarkhizId || 0),
+                                label: item.Onvan,
+                              })),
+                            ]}
                           />
                         </div>
                         <button
@@ -982,7 +1325,7 @@ export default function AkhbarManagePage() {
                           <Plus size={15} /> افزودن
                         </button>
                       </div>
-                      <div className="text-[12px] text-gray-500 mt-1">فقط نقاط خبرخیز محل کاربر نمایش داده می‌شود.</div>
+                      <div className="text-[12px] text-gray-500 mt-1">برای انتخاب نقطه جدید، نقاط خبرخیز محل فعلی شما نمایش داده می‌شود.</div>
                     </div>
 
                     <FormInput
@@ -1033,7 +1376,7 @@ export default function AkhbarManagePage() {
                       )}
                     </div>
                     <div className="text-[11px] text-gray-500 mt-1">
-                      جستجو از ۲ کاراکتر شروع می‌شود؛ عبارت چندکلمه‌ای و مشابه پشتیبانی می‌شود و ۲ ثانیه بعد از آخرین تغییر متن، در SQL انجام می‌شود.
+                      جستجو از ۲ کاراکتر شروع می‌شود؛ عبارت چندکلمه‌ای و مشابه پشتیبانی می‌شود و ۲ ثانیه بعد از آخرین تغییر متن انجام می‌شود.
                     </div>
 
                     {(personSearchWaiting || personSearchLoading) && personSearch.trim().length >= 2 && (
@@ -1189,7 +1532,7 @@ export default function AkhbarManagePage() {
                         پیوست‌های خبر
                       </div>
                       <div className="text-[12px] text-gray-500 mt-1">
-                        تصویر PNG/JPG/JPEG و MP3 تا 5MB و ویدئو تا 10MB قابل ثبت است. نام فایل در بانک فایل با GUID ذخیره می‌شود.
+                        تصویر PNG/JPG/JPEG و MP3 تا 5MB و ویدئو تا 10MB قابل ثبت است.
                       </div>
                     </div>
                     <div className="rounded-lg bg-gray-100 border px-3 py-2 text-[13px] text-gray-700">
@@ -1240,7 +1583,7 @@ export default function AkhbarManagePage() {
                             attachments.map((item, index) => (
                               <div key={item.KhabarPeyvastId} className={`px-3 py-2 border-b last:border-b-0 flex items-center gap-2 text-[12px] ${Number(activeAttachmentId) === Number(item.KhabarPeyvastId) ? "bg-sky-50" : "hover:bg-gray-50"}`}>
                                 <button type="button" onClick={() => setActiveAttachmentId(Number(item.KhabarPeyvastId))} className="flex-1 min-w-0 text-right cursor-pointer">
-                                  <div className="truncate text-gray-800">{index + 1}. {item.FileName}</div>
+                                  <div className="truncate text-gray-800">{index + 1}. {item.OriginalFileName?.trim() || `پیوست ${index + 1}`}</div>
                                   <div className="text-[10px] text-gray-400 mt-0.5">{formatFileSize(item.FileSize)}</div>
                                 </button>
                                 <button
@@ -1274,7 +1617,7 @@ export default function AkhbarManagePage() {
                                 key={item.KhabarPeyvastId}
                                 onClick={() => setActiveAttachmentId(Number(item.KhabarPeyvastId))}
                                 className={`w-16 h-16 rounded-lg border-2 overflow-hidden bg-gray-50 flex items-center justify-center cursor-pointer ${active ? "border-sky-500 ring-2 ring-sky-100" : "border-gray-200 hover:border-sky-300"}`}
-                                title={item.FileName}
+                                title={item.OriginalFileName?.trim() || "پیوست خبر"}
                               >
                                 {kind === "image" ? (
                                   <img src={url} alt="پیوست خبر" className="w-full h-full object-cover" />
@@ -1300,7 +1643,7 @@ export default function AkhbarManagePage() {
                               <div className="w-full px-8 text-center">
                                 <Music size={58} className="mx-auto text-amber-400 mb-5" />
                                 <audio src={activeAttachmentUrl} controls className="w-full" />
-                                <div className="text-white/70 text-[11px] mt-3 break-all">{activeAttachment.FileName}</div>
+                                <div className="text-white/70 text-[11px] mt-3 break-all">{activeAttachment.OriginalFileName?.trim() || "فایل صوتی"}</div>
                               </div>
                             ) : (
                               <div className="text-white/60 text-center"><FileImage size={48} className="mx-auto mb-2" />پیش‌نمایش این فایل در دسترس نیست.</div>
@@ -1326,72 +1669,145 @@ export default function AkhbarManagePage() {
                       مرور خبر
                     </div>
                     <div className="text-[12px] text-gray-500 mt-1">
-                      قبل از ارسال، اطلاعات خبر و بخش‌های وابسته در این صفحه مرور می‌شوند.
+                      اطلاعات خبر، اشخاص وابسته و پیوست‌ها را قبل از ادامه بررسی کنید.
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3" data-tour="review-info">
-                    <div className="rounded-xl border bg-gray-50 p-3">
-                      <div className="text-[11px] text-gray-500">شماره خبر</div>
-                      <div className="mt-1 text-[15px] text-gray-800">{form.shomareKhabar}</div>
-                    </div>
-                    <div className="rounded-xl border bg-gray-50 p-3">
-                      <div className="text-[11px] text-gray-500">شماره نامه</div>
-                      <div className="mt-1 text-[14px] text-gray-800">{form.shomareNameh || "—"}</div>
-                    </div>
-                    <div className="rounded-xl border bg-gray-50 p-3">
-                      <div className="text-[11px] text-gray-500">تاریخ انتشار</div>
-                      <div className="mt-1 text-[14px] text-gray-800">{form.tarikhEnteshar || "—"}</div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border mt-3 p-4">
-                    <div className="text-[11px] text-gray-500">عنوان خبر</div>
-                    <div className="mt-1 text-[16px] text-gray-900">{form.onvanKhabar}</div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                    <div className="rounded-xl border p-4 min-h-36">
-                      <div className="text-[11px] text-gray-500 mb-2">شرح خبر</div>
-                      <div className="text-[13px] leading-7 text-gray-800 whitespace-pre-wrap">{form.sharhKhabar}</div>
-                    </div>
-                    <div className="rounded-xl border p-4 min-h-36">
-                      <div className="text-[11px] text-gray-500 mb-2">ملاحظات خبر</div>
-                      <div className="text-[13px] leading-7 text-gray-800 whitespace-pre-wrap">{form.molahazatKhabar}</div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3" data-tour="review-relations">
-                    <div className="rounded-xl border p-4">
-                      <div className="flex items-center gap-2 text-[14px] text-gray-800">
-                        <UsersRound size={17} className="text-gray-500" />
-                        اشخاص وابسته
+                  <div className="grid grid-cols-1 lg:grid-cols-[190px_minmax(0,1fr)] gap-4 items-start" dir="ltr">
+                    <aside className="rounded-xl border bg-gray-50 p-3" data-tour="review-relations" dir="rtl">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="text-[13px] text-gray-800 flex items-center gap-2">
+                          <Images size={16} className="text-sky-700" />
+                          پیوست‌ها
+                        </div>
+                        <span className="text-[11px] rounded-full bg-sky-100 text-sky-800 px-2 py-0.5">{attachments.length}</span>
                       </div>
-                      <div className="mt-2 text-[12px] text-gray-500">
-                        {linkedPersons.length > 0
-                          ? `${linkedPersons.length} شخص به این خبر متصل شده است.`
-                          : "شخصی به این خبر متصل نشده است."}
-                      </div>
-                    </div>
-                    <div className="rounded-xl border p-4">
-                      <div className="flex items-center gap-2 text-[14px] text-gray-800">
-                        <Images size={17} className="text-gray-500" />
-                        پیوست‌های خبر
-                      </div>
-                      <div className="mt-2 text-[12px] text-gray-500">{attachments.length > 0 ? `${attachments.length} پیوست به این خبر متصل شده است.` : "پیوستی به این خبر متصل نشده است."}</div>
+
+                      {attachments.length ? (
+                        <div className="space-y-2 max-h-[560px] overflow-y-auto pl-1">
+                          {attachments.map((item, index) => {
+                            const kind = getPeyvastKind(item.FileName);
+                            const url = user?.UserId ? GetKhabarPeyvastUrl(form.shomareKhabar, user.UserId, item.FileName) : "";
+                            const displayName = item.OriginalFileName?.trim() || `پیوست ${index + 1}`;
+                            return (
+                              <button
+                                type="button"
+                                key={item.KhabarPeyvastId}
+                                onClick={() => setActiveAttachmentId(Number(item.KhabarPeyvastId))}
+                                className="w-full rounded-lg border bg-white p-2 hover:border-sky-300 hover:bg-sky-50 transition cursor-pointer"
+                                title={displayName}
+                              >
+                                <div className="w-16 h-16 mx-auto rounded-lg border overflow-hidden bg-gray-50 flex items-center justify-center">
+                                  {kind === "image" ? (
+                                    <img src={url} alt={displayName} className="w-full h-full object-cover" />
+                                  ) : kind === "video" ? (
+                                    <Video size={24} className="text-violet-600" />
+                                  ) : kind === "audio" ? (
+                                    <Music size={24} className="text-amber-600" />
+                                  ) : (
+                                    <FileImage size={24} className="text-gray-500" />
+                                  )}
+                                </div>
+                                <div className="mt-1 text-[10px] text-gray-700 truncate text-center">{displayName}</div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border border-dashed bg-white py-8 text-center text-[11px] text-gray-400">پیوستی ثبت نشده است.</div>
+                      )}
+                    </aside>
+
+                    <div className="rounded-xl border overflow-hidden bg-white" data-tour="review-info" dir="rtl">
+                      <table className="w-full border-collapse text-[12px]">
+                        <thead>
+                          <tr className="bg-sky-50 text-sky-900">
+                            <th className="w-40 border-b border-l px-3 py-2.5 text-right font-normal">عنوان</th>
+                            <th className="border-b px-3 py-2.5 text-right font-normal">محتوا</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[
+                            ["شماره خبر", form.shomareKhabar || "—"],
+                            ["وضعیت جاری", reviewDetail?.CurrentStatusName || "پیش‌نویس"],
+                            ["طبقه‌بندی خبر", reviewDetail?.TabaqehBandiName || "—"],
+                            ["منبع خبر", reviewDetail?.ManbaKhabarName || "—"],
+                            ["نوع خبر", reviewDetail?.NoeKhabarName || "—"],
+                            ["تاریخ نامه", form.tarikhNameh || "—"],
+                            ["شماره نامه", form.shomareNameh || "—"],
+                            ["عنوان خبر", form.onvanKhabar || "—"],
+                            ["شرح خبر", form.sharhKhabar || "—"],
+                            ["ملاحظات خبر", form.molahazatKhabar || "—"],
+                            ["نقطه خبرخیز", reviewDetail?.NoghteKhabarkhizName || "—"],
+                            ["محل نقطه خبرخیز", form.mahalNoghteKhabarkhiz || "—"],
+                            ["تاریخ انتشار", form.tarikhEnteshar || "—"],
+                          ].map(([label, value]) => (
+                            <tr key={String(label)} className="odd:bg-white even:bg-gray-50/70 align-top">
+                              <td className="border-b border-l px-3 py-2.5 text-gray-600 whitespace-nowrap">{label}</td>
+                              <td className="border-b px-3 py-2.5 text-gray-900 whitespace-pre-wrap leading-6">{value}</td>
+                            </tr>
+                          ))}
+                          <tr className="align-top bg-white">
+                            <td className="border-b border-l px-3 py-2.5 text-gray-600 whitespace-nowrap">اشخاص وابسته</td>
+                            <td className="border-b px-3 py-2.5">
+                              {linkedPersons.length ? (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {linkedPersons.map((person) => (
+                                    <span key={person.KhabarShakhsId || person.ShomarehParvandeh} className="rounded-md border bg-gray-50 px-2 py-1 text-[11px] text-gray-700">
+                                      {[person.FirstName, person.LastName, person.NamePedar ? `فرزند ${person.NamePedar}` : ""].filter(Boolean).join(" ")}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : "—"}
+                            </td>
+                          </tr>
+                          <tr className="align-top bg-gray-50/70">
+                            <td className="border-l px-3 py-2.5 text-gray-600 whitespace-nowrap">اسامی پیوست‌ها</td>
+                            <td className="px-3 py-2.5">
+                              {attachments.length ? (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {attachments.map((item, index) => (
+                                    <span key={item.KhabarPeyvastId} className="rounded-md border bg-white px-2 py-1 text-[11px] text-gray-700">
+                                      {item.OriginalFileName?.trim() || `پیوست ${index + 1}`}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : "—"}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-900">
-                    دکمه ارسال خبر پس از تکمیل گردش‌کار فعال می‌شود. فعلاً خبر به‌عنوان رکورد ثبت‌شده نگهداری می‌شود.
-                  </div>
+                  {reviewDetail?.IsInbox && reviewDetail?.CurrentStatusCode !== "PISHNEVIS" ? (
+                    <div className={`mt-4 rounded-xl border px-4 py-3 text-[12px] ${reviewDetail?.IsReturned ? "border-amber-200 bg-amber-50 text-amber-900" : "border-sky-200 bg-sky-50 text-sky-900"}`}>
+                      {reviewDetail?.IsReturned
+                        ? "این خبر برای تکمیل به کارتابل شما برگشت داده شده است. پس از اصلاح می‌توانید آن را دوباره تأیید و ارسال کنید."
+                        : "این خبر در کارتابل شما قرار دارد. پس از بررسی، آن را تأیید و به مرحله بالاتر ارسال کنید یا با ذکر دلیل به فرستنده برگردانید."}
+                      {reviewDetail?.IsReturned && reviewDetail?.LastReturnReason && (
+                        <div className="mt-2 rounded-lg border border-amber-200 bg-white/70 p-2 whitespace-pre-wrap leading-6">
+                          <span className="text-amber-800">علت برگشت: </span>{reviewDetail.LastReturnReason}
+                        </div>
+                      )}
+                    </div>
+                  ) : reviewDetail?.CurrentStatusCode === "PISHNEVIS" ? (
+                    <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-900">
+                      خبر هنوز ارسال نشده است. پس از بررسی اطلاعات، آن را برای مسئول بالادست ارسال کنید.
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[12px] text-gray-700">
+                      وضعیت فعلی: {reviewDetail?.CurrentStatusName || "در حال گردش"}
+                      {reviewDetail?.CurrentUserName ? ` — در اختیار ${reviewDetail.CurrentUserName}` : ""}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
             <div className="border-t bg-gray-50 px-4 py-3 flex items-center justify-between gap-2">
               <div>
-                {currentStep > 1 && (
+                {currentStep > 1 && !readOnlyMode && (
                   <button
                     type="button"
                     onClick={() => setCurrentStep((currentStep - 1) as WizardStep)}
@@ -1453,14 +1869,218 @@ export default function AkhbarManagePage() {
                 {currentStep === 4 && (
                   <button
                     type="button"
-                    onClick={() => void closeWizard()}
-                    className="h-9 px-5 rounded-lg bg-green-700 hover:bg-green-600 text-white flex items-center gap-2 cursor-pointer"
+                    onClick={() => void openCycle(form.shomareKhabar)}
+                    className="h-9 px-4 rounded-lg border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-800 flex items-center gap-2 cursor-pointer"
                   >
-                    <CircleCheck size={16} />
-                    ذخیره و بستن
+                    <History size={16} /> چرخه خبر
+                  </button>
+                )}
+
+                {currentStep === 4 && Boolean(reviewDetail?.IsInbox) && Boolean(reviewDetail?.CanReturn) && reviewDetail?.CurrentStatusCode !== "PISHNEVIS" && (
+                  <button
+                    type="button"
+                    onClick={() => void openReturnModal()}
+                    className="h-9 px-5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white flex items-center gap-2 cursor-pointer"
+                  >
+                    <RotateCcw size={16} /> برگشت به فرستنده
+                  </button>
+                )}
+
+                {currentStep === 4 && (Boolean(reviewDetail?.IsInbox) || (Boolean(reviewDetail?.IsOwner) && reviewDetail?.CurrentStatusCode === "PISHNEVIS")) && (
+                  <button
+                    type="button"
+                    onClick={() => void prepareSendKhabar()}
+                    disabled={workflowSending || sendPreviewLoading}
+                    className="h-9 px-5 rounded-lg bg-green-700 hover:bg-green-600 text-white flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {(workflowSending || sendPreviewLoading) ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                    {reviewDetail?.CurrentStatusCode === "PISHNEVIS" ? "ارسال خبر" : "تأیید و ارسال به بالاتر"}
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {sendConfirmModalOpen && nextDestination && (
+        <div className="fixed inset-0 z-[1470] flex items-center justify-center bg-black/45 px-4" dir="rtl">
+          <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="border-b bg-sky-50 px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sky-900">
+                <Send size={19} />
+                <div>
+                  <div className="text-[15px]">تأیید ارسال خبر</div>
+                  <div className="mt-1 text-[11px] text-sky-700">قبل از ارسال، مقصد خبر را بررسی کنید.</div>
+                </div>
+              </div>
+              <button type="button" onClick={() => setSendConfirmModalOpen(false)} className="w-8 h-8 rounded-full hover:bg-white flex items-center justify-center cursor-pointer"><X size={18} /></button>
+            </div>
+            <div className="p-5">
+              <div className="mb-4 rounded-xl border border-sky-100 bg-sky-50/60 p-3 text-[12px] text-sky-900">
+                خبر شماره <span className="font-medium">{form.shomareKhabar}</span> برای مقصد زیر ارسال خواهد شد.
+              </div>
+              <div className="space-y-2 text-[12px]">
+                <div className="grid grid-cols-[95px_1fr] overflow-hidden rounded-lg border"><div className="border-l bg-gray-50 px-3 py-2 text-gray-600">گیرنده</div><div className="px-3 py-2 text-gray-900">{nextDestination.ToFullName || "—"}</div></div>
+                <div className="grid grid-cols-[95px_1fr] overflow-hidden rounded-lg border"><div className="border-l bg-gray-50 px-3 py-2 text-gray-600">سمت</div><div className="px-3 py-2 text-gray-900">{nextDestination.ToOnvanPost || "—"}</div></div>
+                <div className="grid grid-cols-[95px_1fr] overflow-hidden rounded-lg border"><div className="border-l bg-gray-50 px-3 py-2 text-gray-600">محل ارسال</div><div className="px-3 py-2 text-gray-900">{nextDestination.ToNameMahal || "—"}</div></div>
+              </div>
+              <div className="mt-4">
+                <label className="mb-1 block text-[12px] text-gray-700">توضیحات <span className="text-gray-400">(اختیاری)</span></label>
+                <textarea
+                  value={sendDescription}
+                  onChange={(e) => setSendDescription(e.target.value)}
+                  rows={4}
+                  maxLength={2000}
+                  placeholder="در صورت نیاز توضیحی برای گیرنده بنویسید..."
+                  className="w-full resize-y rounded-xl border border-gray-300 p-3 text-[13px] leading-7 outline-none focus:border-sky-500"
+                />
+                <div className="mt-1 text-left text-[10px] text-gray-400">{sendDescription.length}/2000</div>
+              </div>
+            </div>
+            <div className="border-t bg-gray-50 px-5 py-3 flex justify-end gap-2">
+              <button type="button" onClick={() => setSendConfirmModalOpen(false)} disabled={workflowSending} className="h-9 px-5 rounded-lg border bg-white hover:bg-gray-100 cursor-pointer disabled:opacity-50">انصراف</button>
+              <button type="button" onClick={() => void handleSendKhabar()} disabled={workflowSending} className="h-9 px-5 rounded-lg bg-green-700 hover:bg-green-600 text-white inline-flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                {workflowSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} تأیید و ارسال
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {returnModalOpen && (
+        <div className="fixed inset-0 z-[1400] flex items-center justify-center bg-black/45 px-4" dir="rtl">
+          <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="border-b bg-amber-50 px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-amber-900"><RotateCcw size={19} /><span className="text-[15px]">برگشت خبر به فرستنده</span></div>
+              <button type="button" onClick={() => setReturnModalOpen(false)} className="w-8 h-8 rounded-full hover:bg-white flex items-center justify-center cursor-pointer"><X size={18} /></button>
+            </div>
+            <div className="p-5">
+              <div className="mb-4 text-[12px] text-gray-600">موارد نقص را انتخاب کنید. با انتخاب هر مورد، متن آن به توضیحات اضافه می‌شود. در صورت نیاز توضیح تکمیلی هم بنویسید.</div>
+              <div className="mb-4">
+                <div className="text-[12px] text-gray-700 mb-2">موارد نقص خبر</div>
+                {returnTags.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {returnTags.map((tag) => {
+                      const selected = selectedReturnTags.includes(tag.ID);
+                      return (
+                        <button key={tag.ID} type="button" onClick={() => toggleReturnTag(tag)} className={`rounded-full border px-3 py-1.5 text-[11px] cursor-pointer transition ${selected ? "border-amber-500 bg-amber-100 text-amber-900" : "border-gray-200 bg-gray-50 hover:bg-amber-50 text-gray-700"}`}>
+                          {selected ? "✓ " : "+ "}{tag.NameFarsi}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed p-3 text-[11px] text-gray-400">تگی برای اشکالات خبر تعریف نشده است؛ توضیح برگشت را به‌صورت دستی وارد کنید.</div>
+                )}
+              </div>
+              <label className="block text-[12px] text-gray-700 mb-1">توضیحات برگشت <span className="text-red-600">*</span></label>
+              <textarea value={returnReason} onChange={(e) => setReturnReason(e.target.value)} rows={7} maxLength={2000} placeholder="علت ناقص بودن خبر و موارد لازم برای اصلاح را بنویسید..." className="w-full rounded-xl border border-gray-300 p-3 text-[13px] leading-7 outline-none focus:border-amber-500 resize-y" />
+              <div className="mt-1 text-[10px] text-gray-400 text-left">{returnReason.length}/2000</div>
+            </div>
+            <div className="border-t bg-gray-50 px-5 py-3 flex justify-end gap-2">
+              <button type="button" onClick={() => setReturnModalOpen(false)} className="h-9 px-5 rounded-lg border bg-white hover:bg-gray-100 cursor-pointer">انصراف</button>
+              <button type="button" onClick={() => void handleReturnKhabar()} disabled={returnSaving || !returnReason.trim()} className="h-9 px-5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white inline-flex items-center gap-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed">
+                {returnSaving ? <Loader2 size={16} className="animate-spin" /> : <RotateCcw size={16} />} تأیید برگشت
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cycleModalOpen && (
+        <div className="fixed inset-0 z-[1450] flex items-center justify-center bg-black/45 px-4" dir="rtl">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl flex flex-col">
+            <div className="border-b bg-violet-50 px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-violet-900"><History size={19} /><span className="text-[15px]">چرخه خبر {cycleSummary?.ShomareKhabar ? `شماره ${cycleSummary.ShomareKhabar}` : ""}</span></div>
+              <button type="button" onClick={() => setCycleModalOpen(false)} className="w-8 h-8 rounded-full hover:bg-white flex items-center justify-center cursor-pointer"><X size={18} /></button>
+            </div>
+            <div className="p-5 overflow-y-auto">
+              {cycleLoading ? (
+                <div className="h-48 flex items-center justify-center text-gray-500 gap-2"><Loader2 size={18} className="animate-spin" /> در حال دریافت چرخه خبر...</div>
+              ) : (
+                <>
+                  {cycleSummary && (
+                    <div className="rounded-xl border border-violet-100 bg-violet-50/60 p-4 mb-5">
+                      <div className="text-[14px] text-gray-900 mb-3">{cycleSummary.OnvanKhabar}</div>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-[11px]">
+                        <div className="rounded-lg bg-white border p-2"><span className="text-gray-400 block mb-1">وضعیت جاری</span><span>{cycleSummary.CurrentStatusName || "—"}</span></div>
+                        <div className="rounded-lg bg-white border p-2"><span className="text-gray-400 block mb-1">در اختیار</span><span>{cycleSummary.CurrentUserName || "—"}</span></div>
+                        <div className="rounded-lg bg-white border p-2"><span className="text-gray-400 block mb-1">سمت</span><span>{cycleSummary.CurrentPostName || "—"}</span></div>
+                        <div className="rounded-lg bg-white border p-2"><span className="text-gray-400 block mb-1">محل</span><span>{cycleSummary.CurrentMahalName || "—"}</span></div>
+                      </div>
+                    </div>
+                  )}
+                  <div className="relative pr-6">
+                    <div className="absolute right-[9px] top-2 bottom-2 w-px bg-gray-200" />
+                    <div className="space-y-3">
+                      {cycleLogs.map((log, index) => {
+                        const returned = String(log.ActionCode || "").startsWith("BARGASHT_");
+                        return (
+                          <div key={`${log.LogId}-${index}`} className="relative rounded-xl border bg-white p-4">
+                            <div className={`absolute -right-[22px] top-5 w-3 h-3 rounded-full border-2 border-white ${returned ? "bg-amber-500" : index === 0 ? "bg-gray-500" : "bg-emerald-500"}`} />
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-2">
+                              <div className={`text-[13px] ${returned ? "text-amber-800" : "text-gray-900"}`}>{log.NoeEghdam || "اقدام"}</div>
+                              <div className="text-[10px] text-gray-400 inline-flex items-center gap-1"><Clock3 size={12} /> {log.CreateDateTime || "—"}</div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
+                              <div className="rounded-lg bg-gray-50 p-2"><span className="text-gray-400">از: </span>{log.FromUserName || "—"}{log.FromPostName ? ` — ${log.FromPostName}` : ""}{log.FromMahalName ? ` — ${log.FromMahalName}` : ""}</div>
+                              <div className="rounded-lg bg-gray-50 p-2"><span className="text-gray-400">به: </span>{log.ToUserName || "—"}{log.ToPostName ? ` — ${log.ToPostName}` : ""}{log.ToMahalName ? ` — ${log.ToMahalName}` : ""}</div>
+                            </div>
+                            {log.Tozihat && <div className="mt-2 rounded-lg border border-amber-100 bg-amber-50/60 p-2 text-[11px] text-gray-700 whitespace-pre-wrap leading-6"><span className="text-amber-800">توضیحات: </span>{log.Tozihat}</div>}
+                          </div>
+                        );
+                      })}
+                      {!cycleLogs.length && <div className="rounded-xl border border-dashed p-8 text-center text-gray-400 text-[12px]">گردشی برای این خبر ثبت نشده است.</div>}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="border-t bg-gray-50 px-5 py-3 flex justify-end"><button type="button" onClick={() => setCycleModalOpen(false)} className="h-9 px-6 rounded-lg bg-violet-700 hover:bg-violet-600 text-white cursor-pointer">بستن</button></div>
+          </div>
+        </div>
+      )}
+
+      {destinationModalOpen && sendResult && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/35 px-4" dir="rtl">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className={`border-b px-5 py-4 ${sendResult.StateName === "برگشت شد" ? "bg-amber-50" : "bg-emerald-50"}`}>
+              <div className={`flex items-center gap-2 ${sendResult.StateName === "برگشت شد" ? "text-amber-800" : "text-emerald-800"}`}>
+                {sendResult.StateName === "برگشت شد" ? <RotateCcw size={20} /> : <Send size={20} />}
+                <h3 className="text-[15px] font-normal">{sendResult.StateName === "برگشت شد" ? "خبر به فرستنده برگشت داده شد" : "خبر با موفقیت ارسال شد"}</h3>
+              </div>
+              <p className={`mt-1 text-[11px] ${sendResult.StateName === "برگشت شد" ? "text-amber-700" : "text-emerald-700"}`}>خبر شماره {sendResult.ShomareKhabar || form.shomareKhabar || "—"} در کارتابل مقصد قرار گرفت.</p>
+            </div>
+
+            <div className="space-y-2 px-5 py-4 text-[12px]">
+              <div className="grid grid-cols-[95px_1fr] overflow-hidden rounded-lg border">
+                <div className="border-l bg-gray-50 px-3 py-2 text-gray-600">گیرنده</div>
+                <div className="px-3 py-2 text-gray-900">{sendResult.ToFullName || "—"}</div>
+              </div>
+              <div className="grid grid-cols-[95px_1fr] overflow-hidden rounded-lg border">
+                <div className="border-l bg-gray-50 px-3 py-2 text-gray-600">سمت</div>
+                <div className="px-3 py-2 text-gray-900">{sendResult.ToOnvanPost || "—"}</div>
+              </div>
+              <div className="grid grid-cols-[95px_1fr] overflow-hidden rounded-lg border">
+                <div className="border-l bg-gray-50 px-3 py-2 text-gray-600">محل ارسال</div>
+                <div className="px-3 py-2 text-gray-900">{sendResult.ToNameMahal || "—"}</div>
+              </div>
+            </div>
+
+            <div className="flex justify-end border-t bg-gray-50 px-5 py-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setDestinationModalOpen(false);
+                  setSendResult(null);
+                  setForm(emptyForm);
+                  setReviewDetail(null);
+                }}
+                className="h-9 rounded-lg bg-sky-700 px-6 text-white hover:bg-sky-600 cursor-pointer"
+              >
+                بستن
+              </button>
             </div>
           </div>
         </div>

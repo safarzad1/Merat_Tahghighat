@@ -51,6 +51,7 @@ export async function POST(req: Request) {
         Mahal: user.Mahal,
         PostId: user.PostId,
         FullName: user.FullName,
+        OnvanPost: user.OnvanPost,
         NameMahal: user.NameMahal,
         DateNow: user.DateNow,
         IsMarkazShahrestan: user.IsMarkazShahrestan,

@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
     const result = await pool.request()
       .input("ShomareKhabar", sql.BigInt, shomareKhabar)
       .input("FileName", sql.NVarChar(250), fileName)
+      .input("OriginalFileName", sql.NVarChar(500), file.name)
       .input("Files", sql.VarBinary(sql.MAX), buffer)
       .input("FileSize", sql.Int, fileSizeKb)
       .input("CreateUserId", sql.BigInt, userId)

@@ -2,8 +2,8 @@ import "@/Styles/globals.css";
 import { Providers } from "./providers";
 
 export const metadata = {
-  title: "سامانه مرآت - جدید",
-  description: "توضیحات سایت شما",
+  title: "مرآت",
+  description: "سامانه مرآت",
   icons: {
     icon: "/images/LogoMerat.png",
     shortcut: "/images/LogoMerat.png",

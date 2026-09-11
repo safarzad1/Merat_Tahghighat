@@ -12,10 +12,14 @@ async function postJson(url, body = {}) {
     return data;
 }
 
-export function GetKhabarList(userId, page, sizepage, indexsort, ascdesc, search) {
+export function GetKhabarList(userId, page, sizepage, indexsort, ascdesc, search, boxType = 1) {
     return postJson("/Api/Akhbar/GetKhabarList", {
-        userId, page, sizepage, indexsort, ascdesc, search,
+        userId, page, sizepage, indexsort, ascdesc, search, boxType,
     });
+}
+
+export function GetKhabarCounts(userId) {
+    return postJson("/Api/Akhbar/GetKhabarCounts", { userId });
 }
 
 export function GetKhabar(shomareKhabar, userId) {
@@ -88,4 +92,21 @@ export function GetKhabarPeyvastUrl(shomareKhabar, userId, fileName) {
         fileName: String(fileName),
     });
     return `/Api/Akhbar/GetPeyvastFile?${q.toString()}`;
+}
+
+export function GetNextKhabarDestination(shomareKhabar, userId) {
+    return postJson("/Api/Akhbar/GetNextDestination", { shomareKhabar, userId });
+}
+
+export function SendKhabar(shomareKhabar, userId, tozihat = "", expectedToUserId = 0) {
+    return postJson("/Api/Akhbar/SendKhabar", { shomareKhabar, userId, tozihat, expectedToUserId });
+}
+
+
+export function ReturnKhabar(shomareKhabar, userId, tozihat, eshkalatIds = "") {
+    return postJson("/Api/Akhbar/ReturnKhabar", { shomareKhabar, userId, tozihat, eshkalatIds });
+}
+
+export function GetKhabarGardesh(shomareKhabar, userId) {
+    return postJson("/Api/Akhbar/GetKhabarGardesh", { shomareKhabar, userId });
 }

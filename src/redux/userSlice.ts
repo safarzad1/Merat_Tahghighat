@@ -7,6 +7,7 @@ interface UserState {
   FullName: string;
   PostId: number;
   OnvanSemat: string;
+  OnvanPost: string;
   IsMarkazShahrestan: string;
   DateNow: string;
 }
@@ -18,6 +19,7 @@ const initialState: UserState = {
   PostId: 0,
   FullName: "",
   OnvanSemat: "",
+  OnvanPost: "",
   DateNow: "",
   IsMarkazShahrestan: "",
 };

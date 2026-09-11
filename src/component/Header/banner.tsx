@@ -176,13 +176,18 @@ export default function Page() {
               onError={() => setImgSrc("/images/person.png")}
             />
 
-            <span className="font-medium text-white md:text-base">
-              {user.FullName || "کاربر"}
-            </span>
+            <div className="min-w-0 text-right leading-tight">
+              <div className="flex items-center gap-1.5 whitespace-nowrap text-[13px] text-white">
+                <span className="font-medium">{user.FullName || "کاربر"}</span>
+                {user.OnvanSemat ? (
+                  <span className="text-[12px] text-white/95">({user.OnvanSemat})</span>
+                ) : null}
+              </div>
 
-            <span className="text-[14px] text-white">
-              ({user.OnvanSemat || "سمت"})
-            </span>
+              <div className="mt-1 text-[11px] text-white/80">
+                {user.OnvanPost || ""}
+              </div>
+            </div>
 
             <span className="text-white/80 text-xs">▾</span>
           </div>
