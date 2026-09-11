@@ -8,6 +8,7 @@ import {
     UserCheck,
     User,
     Mail,
+    LayoutDashboard,
 } from "lucide-react";
 import { MessageCount } from "@/Lib/ApiServiceMail";
 import { useRouter } from "next/navigation";
@@ -145,6 +146,15 @@ export default function TopBar() {
 
                     <div className="text-indigo-700">|</div>
                     <Link
+                        href="/MainPage"
+                        className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white"
+                    >
+                        <LayoutDashboard size={16} className="text-blue-600" />
+                        <span>داشبورد</span>
+                    </Link>
+
+                    <div className="text-indigo-700">|</div>
+                    <Link
                         href="/AkhbarManage"
                         className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white"
                     >
@@ -184,6 +194,15 @@ export default function TopBar() {
 
                     <div className="text-indigo-700">|</div>
                     <Link
+                        href="/MainPage"
+                        className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white"
+                    >
+                        <LayoutDashboard size={16} className="text-blue-600" />
+                        <span>داشبورد</span>
+                    </Link>
+
+                    <div className="text-indigo-700">|</div>
+                    <Link
                         href="/AkhbarManage"
                         className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white"
                     >
@@ -220,6 +239,15 @@ export default function TopBar() {
                 </button>
 
                 <>
+                    <div className="text-indigo-700">|</div>
+                    <Link
+                        href="/MainPage"
+                        className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white"
+                    >
+                        <LayoutDashboard size={16} className="text-blue-600" />
+                        <span>داشبورد</span>
+                    </Link>
+
                     <div className="text-indigo-700">|</div>
                     <Link
                         href="/AkhbarManage"
