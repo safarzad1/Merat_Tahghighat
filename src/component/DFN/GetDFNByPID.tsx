@@ -111,6 +111,7 @@ const CustomDropdown = ({
     control: (provided, state) => ({
       ...provided,
       fontSize: "15px",
+      fontFamily: "Shabnam, Arial, sans-serif",
       minHeight: "34px",
       direction: "rtl",
       borderRadius: "8px",
@@ -129,6 +130,7 @@ const CustomDropdown = ({
       direction: "rtl",
       textAlign: "right",
       fontSize: "15px",
+      fontFamily: "Shabnam, Arial, sans-serif",
       zIndex: 9999,
       marginTop: 0,
     }),
@@ -136,10 +138,25 @@ const CustomDropdown = ({
       ...provided,
       backgroundColor: state.isFocused ? "#f3f4f6" : "white",
       color: "#333",
+      fontFamily: "Shabnam, Arial, sans-serif",
     }),
     placeholder: (provided) => ({
       ...provided,
       color: "#9ca3af",
+      fontFamily: "Shabnam, Arial, sans-serif",
+    }),
+    singleValue: (provided) => ({
+      ...provided,
+      fontFamily: "Shabnam, Arial, sans-serif",
+    }),
+    input: (provided) => ({
+      ...provided,
+      fontFamily: "Shabnam, Arial, sans-serif",
+    }),
+    menuPortal: (provided) => ({
+      ...provided,
+      zIndex: 99999,
+      fontFamily: "Shabnam, Arial, sans-serif",
     }),
   };
 
@@ -155,7 +172,7 @@ const CustomDropdown = ({
       )}
 
       <Select<OptionType>
-        instanceId="dfn-dropdown"
+        instanceId={`dfn-dropdown-${PID}`}
         options={options}
         value={
           selectedItem
@@ -167,6 +184,8 @@ const CustomDropdown = ({
         isClearable
         isDisabled={loading}
         styles={customStyles}
+        menuPortalTarget={typeof document !== "undefined" ? document.body : undefined}
+        menuPosition="fixed"
       />
 
       <AnimatePresence>

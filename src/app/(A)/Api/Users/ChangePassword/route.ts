@@ -28,12 +28,21 @@ export async function POST(req: NextRequest) {
         const pool = await getConnection();
         const result = await pool
             .request()
-            .input("Password", sql.BigInt, password)
+            .input("Password", sql.NVarChar(250), String(password ?? "").trim())
             .input("UserId", sql.BigInt, userid)
-            .execute("SP_ChangePassword");
+            .execute("dbo.SP_ChangePassword");
+
+        const updatedCount = Number(result.recordset?.[0]?.UpdatedCount ?? 0);
+
+        if (updatedCount !== 1) {
+            return NextResponse.json(
+                { status: 404, message: "کاربر موردنظر برای تغییر کلمه عبور پیدا نشد." },
+                { status: 404 }
+            );
+        }
 
         return NextResponse.json(
-            { status: 200, data: result.recordset }
+            { status: 200, message: "کلمه عبور با موفقیت تغییر کرد." }
         );
 
     } catch (err) {

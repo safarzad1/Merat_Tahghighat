@@ -24,9 +24,9 @@ export async function POST(req: Request) {
     const dbResult = await pool
       .request()
       .input("CodeMelli", sql.NVarChar(50), username)
-      .input("Password", sql.NVarChar(50), password)
+      .input("Password", sql.NVarChar(250), password)
       .input("IP", sql.NVarChar(50), ip)
-      .execute("SP_CheckUserPassword");
+      .execute("dbo.SP_CheckUserPassword");
 
     const user = dbResult?.recordset?.[0];
 

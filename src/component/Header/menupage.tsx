@@ -144,6 +144,15 @@ export default function TopBar() {
                     </button>
 
                     <div className="text-indigo-700">|</div>
+                    <Link
+                        href="/AkhbarManage"
+                        className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white"
+                    >
+                        <Newspaper size={16} className="text-blue-600" />
+                        <span>مدیریت اخبار</span>
+                    </Link>
+
+                    <div className="text-indigo-700">|</div>
 
                     <Link
                         href="/TahghighatManage"
@@ -175,6 +184,15 @@ export default function TopBar() {
 
                     <div className="text-indigo-700">|</div>
                     <Link
+                        href="/AkhbarManage"
+                        className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white"
+                    >
+                        <Newspaper size={16} className="text-blue-600" />
+                        <span>مدیریت اخبار</span>
+                    </Link>
+
+                    <div className="text-indigo-700">|</div>
+                    <Link
                         href="/Davtalab/Davtalaban"
                         className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white"
                     >
@@ -201,18 +219,16 @@ export default function TopBar() {
                     <span>خروج از حساب</span>
                 </button>
 
-                {mahalLen === 1 && (
-                    <>
-                        <div className="text-indigo-700">|</div>
-                        <Link
-                            href="/AkhbarManage"
-                            className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white"
-                        >
-                            <Newspaper size={16} className="text-blue-600" />
-                            <span>مدیریت اخبار</span>
-                        </Link>
-                    </>
-                )}
+                <>
+                    <div className="text-indigo-700">|</div>
+                    <Link
+                        href="/AkhbarManage"
+                        className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white"
+                    >
+                        <Newspaper size={16} className="text-blue-600" />
+                        <span>مدیریت اخبار</span>
+                    </Link>
+                </>
 
                 <div className="text-indigo-700">|</div>
                 <Link

@@ -2,14 +2,15 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Breadcrumbkhabar from "@/component/Breadcrumb/Breadcrumb";
-import { Code2Icon, Home, Newspaper, Plus, X } from "lucide-react";
+import { Code2Icon, Home, KeyRound, Newspaper, Plus, X } from "lucide-react";
 import FormInput from "@/component/Objects/FormInput1";
+import FormInputpassword from "@/component/Objects/FormInputpassword";
 import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 
 import { GetCitys } from "@/Lib/ApiService";
-import { GetListUsers, AddUser, DeleteUser } from "@/Lib/ApiServiceUsers";
+import { GetListUsers, AddUser, DeleteUser, ChangePassword } from "@/Lib/ApiServiceUsers";
 import DropDownPerson from "@/component/Objects/DropDownPerson";
 import PostDropdown from "@/component/Objects/DropDownPost";
 
@@ -72,6 +73,14 @@ export default function Page() {
 
     // ✅ لودینگ حذف برای هر کاربر
     const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
+
+    // تغییر کلمه عبور کاربر از فهرست
+    const [passwordUser, setPasswordUser] = useState<UserApiRow | null>(null);
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [passwordModalError, setPasswordModalError] = useState("");
+    const [passwordModalSuccess, setPasswordModalSuccess] = useState("");
+    const [changingPassword, setChangingPassword] = useState(false);
 
     const openUserModal = (cityId: number) => {
         setSelectedmahal(String(cityId));
@@ -208,6 +217,62 @@ export default function Page() {
             }
         } catch (e) {
             console.error("❌ AddUser error:", e);
+        }
+    };
+
+    const openPasswordModal = (selectedUser: UserApiRow) => {
+        setPasswordUser(selectedUser);
+        setNewPassword("");
+        setConfirmPassword("");
+        setPasswordModalError("");
+        setPasswordModalSuccess("");
+    };
+
+    const closePasswordModal = () => {
+        if (changingPassword) return;
+        setPasswordUser(null);
+        setNewPassword("");
+        setConfirmPassword("");
+        setPasswordModalError("");
+        setPasswordModalSuccess("");
+    };
+
+    const onChangeUserPassword = async () => {
+        if (!passwordUser) return;
+
+        const pass = newPassword.trim();
+        const confirm = confirmPassword.trim();
+
+        setPasswordModalError("");
+        setPasswordModalSuccess("");
+
+        if (pass.length < 6) {
+            setPasswordModalError("کلمه عبور باید حداقل ۶ کاراکتر باشد.");
+            return;
+        }
+
+        if (pass !== confirm) {
+            setPasswordModalError("کلمه عبور و تکرار آن یکسان نیستند.");
+            return;
+        }
+
+        try {
+            setChangingPassword(true);
+            const res = await ChangePassword(pass, passwordUser.UserId);
+
+            if (res?.status === 200) {
+                setPasswordModalSuccess("کلمه عبور با موفقیت تغییر کرد.");
+                setNewPassword("");
+                setConfirmPassword("");
+            } else if (res?.status === 401 || res?.state === 401) {
+                router.push("/Login");
+            } else {
+                setPasswordModalError(res?.message || res?.error || "خطا در تغییر کلمه عبور.");
+            }
+        } catch (e: any) {
+            setPasswordModalError(e?.message || "خطا در تغییر کلمه عبور.");
+        } finally {
+            setChangingPassword(false);
         }
     };
 
@@ -355,10 +420,21 @@ export default function Page() {
                                                                                         <td className="p-3 text-slate-700">{u.NameMahal}</td>
                                                                                         <td className="p-3 text-slate-700">{u.OnvanPost}</td>
                                                                                         <td className="p-3">
-                                                                                            <span className="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                                                                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                                                                                                {u.Active_NameFarsi}
-                                                                                            </span>
+                                                                                            <div className="flex items-center gap-2">
+                                                                                                <span className="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                                                                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                                                                                    {u.Active_NameFarsi}
+                                                                                                </span>
+                                                                                                <button
+                                                                                                    type="button"
+                                                                                                    onClick={() => openPasswordModal(u)}
+                                                                                                    className="w-8 h-8 rounded-lg inline-flex items-center justify-center border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition focus:outline-none focus:ring-4 focus:ring-amber-100"
+                                                                                                    title="تغییر کلمه عبور"
+                                                                                                    aria-label={`تغییر کلمه عبور ${u.FullName}`}
+                                                                                                >
+                                                                                                    <KeyRound className="w-4 h-4" />
+                                                                                                </button>
+                                                                                            </div>
                                                                                         </td>
 
                                                                                         <td className="p-3">
@@ -394,6 +470,94 @@ export default function Page() {
                     )}
                 </div>
             </div>
+
+            {passwordUser && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={closePasswordModal} />
+
+                    <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden">
+                        <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-l from-amber-100 to-orange-50">
+                            <div>
+                                <div className="text-slate-800 font-semibold">تغییر کلمه عبور</div>
+                                <div className="text-xs text-slate-500 mt-1">
+                                    {passwordUser.FullName} - نام کاربری: {passwordUser.UserId}
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={closePasswordModal}
+                                disabled={changingPassword}
+                                className="w-9 h-9 rounded-full flex items-center justify-center bg-white/70 hover:bg-white border border-slate-200 text-slate-700 transition disabled:opacity-50"
+                                aria-label="بستن"
+                                title="بستن"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-5 shabnam">
+                            <div className="grid grid-cols-1 gap-3">
+                                <FormInputpassword
+                                    label="کلمه عبور جدید"
+                                    placeholder="کلمه عبور جدید"
+                                    icon={KeyRound}
+                                    value={newPassword}
+                                    onChange={(e) => {
+                                        setNewPassword(e.target.value);
+                                        setPasswordModalError("");
+                                        setPasswordModalSuccess("");
+                                    }}
+                                    onlyNumber={false}
+                                    maxLength={200}
+                                />
+
+                                <FormInputpassword
+                                    label="تکرار کلمه عبور"
+                                    placeholder="تکرار کلمه عبور"
+                                    icon={KeyRound}
+                                    value={confirmPassword}
+                                    onChange={(e) => {
+                                        setConfirmPassword(e.target.value);
+                                        setPasswordModalError("");
+                                        setPasswordModalSuccess("");
+                                    }}
+                                    error={!!passwordModalError}
+                                    errorMessage={passwordModalError}
+                                    onlyNumber={false}
+                                    maxLength={200}
+                                />
+                            </div>
+
+                            {passwordModalSuccess && (
+                                <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                                    {passwordModalSuccess}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t bg-slate-50">
+                            <button
+                                type="button"
+                                onClick={closePasswordModal}
+                                disabled={changingPassword}
+                                className="px-4 py-2 rounded-xl border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 transition disabled:opacity-50"
+                            >
+                                بستن
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={onChangeUserPassword}
+                                disabled={changingPassword}
+                                className="px-5 py-2 rounded-xl bg-gradient-to-b from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {changingPassword ? "در حال ثبت..." : "تغییر کلمه عبور"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {isUserModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

@@ -18,8 +18,8 @@ export async function POST(req: NextRequest) {
     const result = await pool
       .request()
       .input("UserName", sql.NVarChar(50), username)
-      .input("Password", sql.NVarChar(50), password)
-      .execute("SP_CheckUserPassword");
+      .input("Password", sql.NVarChar(250), password)
+      .execute("dbo.SP_CheckUserPassword");
 
      if (!result.recordset || result.recordset.length === 0) {
       return NextResponse.json({ status: 204, message: "هیچ داده‌ای از سرور بازنگشت" });
