@@ -1,29 +1,20 @@
-export type MailFolder =
-    | "inbox"
-    | "sent"
-    | "drafts"
-    | "archive"
-    | "spam"
-    | "trash"
-    | "starred"
-    | "important";
+export type MailFolder = "inbox" | "archive" | "trash" | "important";
 
 export type MailMessage = {
     id: string;
-    folder: MailFolder;
-
-    فرستنده: string;
-    ایمیل_فرستنده?: string;
-
-    گیرنده?: string;
-    موضوع: string;
-    پیشنمایش: string;
-    متن: string;
-
-    خوانده_شده: boolean;
-    ستاره_دار: boolean;
-    مهم: boolean;
-    دارای_پیوست: boolean;
-
-    تاریخ: string; // نمایش ساده
+    subject: string;
+    body: string;
+    senderName: string;
+    senderId: string;
+    senderEmail?: string | null;
+    createdateTime: string;
+    isRead: boolean;
+    isNew: boolean;
+    isImportant?: boolean;
+    isStarred?: boolean;
+    dateTimeRead: string | null;
+    attachmentsCount: number;
+    preview?: string;
+    text?: string;
+    folder?: "inbox" | "archive" | "trash" | "spam" | "sent";
 };

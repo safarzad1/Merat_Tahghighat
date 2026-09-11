@@ -1,17 +1,26 @@
-import MessageViewer from "@/component/Mail/MessageViewer";
-import { mockMessages } from "@/component/Mail/mock";
+// app/Mail/message/[id]/page.tsx
+import MessagePageClient from "./MessagePageClient";
+import { decryptText } from "@/Lib/cryptoUtil";
 
-export default async function MessagePage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
-    const msg = mockMessages.find((m) => m.id === id);
+type Params = { id: string };
 
-    if (!msg) {
-        return (
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
-                پیام پیدا نشد.
-            </div>
-        );
-    }
+export default async function Page({
+    params,
+}: {
+    params: Params | Promise<Params>;
+}) {
+    console.log("➡️ Page HIT");
 
-    return <MessageViewer msg={msg} />;
+    const p = await params;
+
+    console.log("➡️ params:", p);
+    console.log("➡️ encrypted id:", p?.id);
+
+    const encrypted = decodeURIComponent(p.id);
+    const plain = decryptText(encrypted);
+    const decodedId = String(plain);
+
+    console.log("➡️ decodedId:", decodedId);
+
+    return <MessagePageClient id={decodedId} />;
 }

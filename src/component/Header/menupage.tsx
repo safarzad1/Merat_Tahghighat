@@ -7,8 +7,9 @@ import {
     Newspaper,
     UserCheck,
     User,
-    User2Icon,
+    Mail,
 } from "lucide-react";
+import { MessageCount } from "@/Lib/ApiServiceMail";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSelector } from "react-redux";
@@ -21,6 +22,9 @@ export default function TopBar() {
 
     const [openDavtalab, setOpenDavtalab] = useState(false);
     const [openUsers, setOpenUsers] = useState(false);
+
+    // ✅ تعداد پیام‌های جدید
+    const [newInbox, setNewInbox] = useState<number>(0);
 
     const davtalabRef = useRef<HTMLDivElement>(null);
     const usersRef = useRef<HTMLDivElement>(null);
@@ -50,11 +54,84 @@ export default function TopBar() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const mahalLen = user?.Mahal?.toString()?.length ?? 0;
+    // ✅ گرفتن تعداد پیام جدید (NewInbox)
+    useEffect(() => {
+        let alive = true;
 
+        const fetchCount = async () => {
+            const userId = user?.UserId;
+            if (!userId) {
+                setNewInbox(0);
+                return;
+            }
+
+            try {
+                const res: any = await MessageCount(userId);
+                const count = Number(res.data[0]?.NewInbox ?? 0);
+
+                if (alive) setNewInbox(Number.isFinite(count) ? count : 0);
+            } catch {
+                if (alive) setNewInbox(0);
+            }
+        };
+
+        fetchCount();
+
+        return () => {
+            alive = false;
+        };
+    }, [user?.UserId]);
+
+
+    useEffect(() => {
+
+        const refreshMail = async () => {
+            if (!user?.UserId) return;
+
+            try {
+                const res: any = await MessageCount(user.UserId);
+                const count = Number(res?.data?.[0]?.NewInbox ?? 0);
+                setNewInbox(count);
+            } catch { }
+        };
+
+        window.addEventListener("mail-read", refreshMail);
+
+        return () => {
+            window.removeEventListener("mail-read", refreshMail);
+        };
+
+    }, [user?.UserId]);
+
+    const mahalLen = user?.Mahal?.toString()?.length ?? 0;
     const postId = Number(user?.PostId);
 
-    if (postId === 56) {
+    const DateAndMail = () => (
+        <div className="flex items-center gap-2">
+            <div className="p-3 h-8 bg-sky-100 rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white">
+                <span>تاریخ روز :</span>
+                <span>{user?.DateNow}</span>
+            </div>
+
+            <button
+                type="button"
+                onClick={() => router.push("/Mail")}
+                className="relative p-2 h-8 bg-sky-100 rounded-xl flex items-center justify-center text-black hover:bg-sky-500 hover:text-white cursor-pointer"
+                aria-label="صندوق پستی"
+                title="صندوق پستی"
+            >
+                <Mail size={18} />
+
+                {newInbox > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[11px] leading-[18px] text-center">
+                        {newInbox > 99 ? "99+" : newInbox}
+                    </span>
+                )}
+            </button>
+        </div>
+    );
+
+    if (postId === 54) {
         return (
             <div className="bg-white w-full mt-0.5 h-10 md:h-10 border-r-gray-500 shadow-md flex items-center justify-between px-4 gap-5 md:px-8">
                 <div className="flex items-center gap-2">
@@ -78,15 +155,13 @@ export default function TopBar() {
                 </div>
 
                 <div className="flex flex-col md:flex-row items-center gap-3 md:gap-6 me-8 md:me-16">
-                    <div className="p-3 h-8 bg-sky-100 rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white">
-                        <span>تاریخ روز :</span>
-                        <span>{user?.DateNow}</span>
-                    </div>
+                    <DateAndMail />
                 </div>
             </div>
         );
     }
-    if (postId === 57) {
+
+    if (postId === 55) {
         return (
             <div className="bg-white w-full mt-0.5 h-10 md:h-10 border-r-gray-500 shadow-md flex items-center justify-between px-4 gap-5 md:px-8">
                 <div className="flex items-center gap-2">
@@ -100,20 +175,16 @@ export default function TopBar() {
 
                     <div className="text-indigo-700">|</div>
                     <Link
-                        href="/Davtalab/CardDavtalab"
+                        href="/Davtalab/Davtalaban"
                         className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white"
                     >
                         <FolderCog size={16} className="text-blue-600" />
                         <span>داوطلبان انتخابات</span>
                     </Link>
-
                 </div>
 
                 <div className="flex flex-col md:flex-row items-center gap-3 md:gap-6 me-8 md:me-16">
-                    <div className="p-3 h-8 bg-sky-100 rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white">
-                        <span>تاریخ روز :</span>
-                        <span>{user?.DateNow}</span>
-                    </div>
+                    <DateAndMail />
                 </div>
             </div>
         );
@@ -173,14 +244,23 @@ export default function TopBar() {
                             setOpenDavtalab((prev) => !prev);
                             setOpenUsers(false);
                         }}
-                        className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white select-none"
+                        className="p-2 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white select-none"
                     >
                         <UserCheck size={16} className="text-blue-600" />
-                        <span>پیش ثبت نام مجلس دوازدهم</span>
+                        <span className="p-2">مجلس دوازدهم</span>
                     </div>
 
                     {openDavtalab && (
                         <div className="absolute right-0 mt-1 w-60 bg-white border border-gray-200 rounded-b-xl shadow-lg z-50">
+                            <Link
+                                href="/Davtalab/Davtalaban"
+                                onClick={() => setOpenDavtalab(false)}
+                                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-sky-100 rounded-t-xl"
+                            >
+                                <User size={16} className="text-blue-600" />
+                                <span>فهرست ثبت نام قطعی</span>
+                            </Link>
+                            <hr />
                             <Link
                                 href="/Davtalab/CardDavtalab"
                                 onClick={() => setOpenDavtalab(false)}
@@ -189,22 +269,10 @@ export default function TopBar() {
                                 <User size={16} className="text-blue-600" />
                                 <span>فهرست پیش ثبت نام</span>
                             </Link>
-
-                            {mahalLen === 3 && (
-                                <Link
-                                    href="/Davtalab/AshkhasParvandeh"
-                                    onClick={() => setOpenDavtalab(false)}
-                                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-sky-100 rounded-b-xl"
-                                >
-                                    <User2Icon size={16} className="text-green-600" />
-                                    <span>پرونده اشخاص</span>
-                                </Link>
-                            )}
                         </div>
                     )}
                 </div>
 
-                {/* ✅ منوی مدیریت کاربران */}
                 {mahalLen <= 3 && (
                     <>
                         <div className="text-indigo-700">|</div>
@@ -218,29 +286,18 @@ export default function TopBar() {
                                 className="p-1 h-8 bg-white rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white select-none"
                             >
                                 <UserCheck size={16} className="text-blue-600" />
-                                <span>مدیریت کاربران</span>
+                                <span> کاربران</span>
                             </div>
 
                             {openUsers && (
                                 <div className="absolute right-0 mt-1 w-60 bg-white border border-gray-200 rounded-b-xl shadow-lg z-50">
-                                    {mahalLen === 1 && (
-                                        <Link
-                                            href="/Users/FehrestUsers/Setad"
-                                            onClick={() => setOpenUsers(false)}
-                                            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-sky-100 rounded-t-xl"
-                                        >
-                                            <User size={16} className="text-blue-600" />
-                                            <span>کاربران ستاد</span>
-                                        </Link>
-                                    )}
-
                                     <Link
                                         href="/Users/FehrestUsers/Ostan"
                                         onClick={() => setOpenUsers(false)}
                                         className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-sky-100 rounded-b-xl"
                                     >
                                         <User size={16} className="text-blue-600" />
-                                        <span>کاربران استان و شهرستان</span>
+                                        <span>مدیریت کاربران </span>
                                     </Link>
                                 </div>
                             )}
@@ -250,10 +307,7 @@ export default function TopBar() {
             </div>
 
             <div className="flex flex-col md:flex-row items-center gap-3 md:gap-6 me-8 md:me-16">
-                <div className="p-3 h-8 bg-sky-100 rounded-xl flex items-center gap-1 text-black text-sm md:text-base cursor-pointer hover:bg-sky-500 hover:text-white">
-                    <span>تاریخ روز :</span>
-                    <span>{user?.DateNow}</span>
-                </div>
+                <DateAndMail />
             </div>
         </div>
     );

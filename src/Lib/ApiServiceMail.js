@@ -95,14 +95,88 @@ export async function GetUsersFromGroup(idGroup) {
 
 
 // -----------------------------------------------------------------
-export async function MessageInbox(userId) {
+export async function MessageInbox(userId, boxValue) {
     try {
         const res = await fetch("/Api/Mail/GetMessageInbox", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
+            body: JSON.stringify({ userId, boxValue }),
+        });
+
+        const data = await res.json();
+        return data;
+    } catch (error) {
+        console.error("خطا در انجام فرآیند:", error);
+        throw error;
+    }
+}// -----------------------------------------------------------------
+export async function MessageByID(messageId) {
+    try {
+        const res = await fetch("/Api/Mail/GetMessageByID", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ messageId }),
+        });
+
+        const data = await res.json();
+        return data;
+    } catch (error) {
+        console.error("خطا در انجام فرآیند:", error);
+        throw error;
+    }
+}
+
+// -----------------------------------------------------------------
+export async function MessageFilesByID(messageId) {
+    try {
+        const res = await fetch("/Api/Mail/GetMessageFiles", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ messageId }),
+        });
+
+        const data = await res.json();
+        return data;
+    } catch (error) {
+        console.error("خطا در انجام فرآیند:", error);
+        throw error;
+    }
+}
+
+// -----------------------------------------------------------------
+export async function MessageCount(userId) {
+    try {
+        const res = await fetch("/Api/Mail/GetCountMessage", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
             body: JSON.stringify({ userId }),
+        });
+
+        const data = await res.json();
+        return data;
+    } catch (error) {
+        console.error("خطا در انجام فرآیند:", error);
+        throw error;
+    }
+}
+
+// -----------------------------------------------------------------
+export async function ReadMessageset(messageId, userId) {
+    try {
+        const res = await fetch("/Api/Mail/SetReadMessage", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ messageId, userId }),
         });
 
         const data = await res.json();
